@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.androidLint)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
@@ -25,12 +27,6 @@ kotlin {
     }
 
     val xcfName = "base:uiKit"
-
-    iosX64 {
-        binaries.framework {
-            baseName = xcfName
-        }
-    }
 
     iosArm64 {
         binaries.framework {
@@ -73,5 +69,10 @@ kotlin {
             dependencies {}
         }
     }
-
 }
+
+//compose.resources {
+//    publicResClass = true
+//    packageOfResClass = "ru.kvmsoft.base.ui.ComposeResources"
+//    generateResClass = auto
+//}

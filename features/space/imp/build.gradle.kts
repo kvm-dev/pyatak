@@ -24,12 +24,6 @@ kotlin {
 
     val xcfName = "features:space:impKit"
 
-    iosX64 {
-        binaries.framework {
-            baseName = xcfName
-        }
-    }
-
     iosArm64 {
         binaries.framework {
             baseName = xcfName

@@ -1,5 +1,8 @@
 rootProject.name = "Pyatak"
 
+// 1. ВКЛЮЧАЕМ ТИПОБЕЗОПАСНЫЕ АКСЕССОРЫ ПРОЕКТОВ
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 pluginManagement {
     repositories {
         google {
@@ -24,6 +27,9 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+
+        // 2. ИСПРАВЛЯЕМ АДРЕС РЕПОЗИТОРИЯ JETBRAINS
+        maven("https://jetbrains.space")
     }
 }
 
@@ -46,3 +52,5 @@ include(":features:space:api")
 include(":features:space:imp")
 include(":features:city:api")
 include(":features:city:imp")
+include(":features:language:api")
+include(":features:language:imp")

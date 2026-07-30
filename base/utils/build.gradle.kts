@@ -2,6 +2,9 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.androidLint)
+    alias(libs.plugins.mokkery.plugin)
+    alias(libs.plugins.kotlinxSerialization)
+    kotlin("plugin.allopen") version "2.3.0"
 }
 
 kotlin {
@@ -24,12 +27,6 @@ kotlin {
 
     val xcfName = "base:utilsKit"
 
-    iosX64 {
-        binaries.framework {
-            baseName = xcfName
-        }
-    }
-
     iosArm64 {
         binaries.framework {
             baseName = xcfName
@@ -44,7 +41,13 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
+                //utils
+                implementation(libs.androidx.lifecycle.runtimeCompose)
                 implementation(libs.kotlin.stdlib)
+                //di
+                implementation(libs.koin.core)
+                //serialization
+                implementation(libs.kotlinx.serialization)
             }
         }
 
@@ -55,7 +58,11 @@ kotlin {
         }
 
         androidMain {
-            dependencies {}
+            dependencies {
+                //di
+                implementation(libs.koin.android)
+                implementation(libs.koin.compose)
+            }
         }
 
         getByName("androidDeviceTest") {

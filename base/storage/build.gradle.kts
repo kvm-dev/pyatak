@@ -24,12 +24,6 @@ kotlin {
 
     val xcfName = "base:storageKit"
 
-    iosX64 {
-        binaries.framework {
-            baseName = xcfName
-        }
-    }
-
     iosArm64 {
         binaries.framework {
             baseName = xcfName
