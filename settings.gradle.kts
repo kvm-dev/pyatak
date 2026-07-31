@@ -27,8 +27,6 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
-
-        // 2. ИСПРАВЛЯЕМ АДРЕС РЕПОЗИТОРИЯ JETBRAINS
         maven("https://jetbrains.space")
     }
 }

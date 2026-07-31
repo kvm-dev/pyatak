@@ -16,6 +16,9 @@ kotlin {
         }
         minSdk = libs.versions.android.minSdk.get().toInt()
 
+        experimentalProperties["android.experimental.kmp.enableAndroidResources"] = true
+
+
         withHostTestBuilder {
         }
 
@@ -44,6 +47,24 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(libs.kotlin.stdlib)
+                api(libs.compose.runtime)
+                api(libs.compose.foundation)
+                api(libs.compose.material3)
+                api(libs.compose.ui)
+                api(libs.compose.components.resources)
+                api(libs.compose.uiToolingPreview)
+                //lottie
+                api(libs.compottie)
+                //ui - liquid glass
+                api(libs.backdrop)
+                //utils
+                implementation(libs.androidx.lifecycle.runtimeCompose)
+                //navigation for backHandler and backhandler
+                implementation(libs.navigation)
+                implementation(libs.backhandler)
+                implementation(projects.base.utils)
+                //features
+                implementation(projects.features.language.api)
             }
         }
 
@@ -71,8 +92,8 @@ kotlin {
     }
 }
 
-//compose.resources {
-//    publicResClass = true
-//    packageOfResClass = "ru.kvmsoft.base.ui.ComposeResources"
-//    generateResClass = auto
-//}
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "ru.mykvm.ui.ComposeResources"
+    generateResClass = auto
+}
