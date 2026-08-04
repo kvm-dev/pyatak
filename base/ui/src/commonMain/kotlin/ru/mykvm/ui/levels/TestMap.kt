@@ -41,6 +41,7 @@ import ru.mykvm.ui.levels.lostCity.TILE_DISPLAY_SIZE
 import ru.mykvm.ui.levels.lostCity.gameMap
 import ru.mykvm.ui.model.TileType
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun TestMap() {
@@ -75,7 +76,7 @@ fun TestMap() {
     // Стабильный игровой таймер кадров
     var gameTimeMillis by remember { mutableStateOf(0L) }
     LaunchedEffect(Unit) {
-        while (true) { withFrameMillis { time -> gameTimeMillis += 16L } }
+        while (true) { withFrameMillis { _ -> gameTimeMillis += 16L } }
     }
 
     var animationStartTime by remember { mutableStateOf(0L) }
@@ -84,7 +85,7 @@ fun TestMap() {
     // ИСПРАВЛЕНИЕ: Фоновый, железобетонный таймер стамины (работает всегда)
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(1000) // Проверка каждую секунду
+            kotlinx.coroutines.delay(1.seconds) // Проверка каждую секунду
             val isResting = currentState == HuntsmanState.IDLE && !isMoving && jumpOffsetY.value == 0f && !isFalling
             if (isResting && stamina < 10) {
                 stamina += 1 // Восстанавливаем по 1 единице в покое
@@ -95,7 +96,7 @@ fun TestMap() {
     // Менеджер автоматического завершения анимации Атаки (ровно через 1000мс)
     LaunchedEffect(currentState) {
         if (currentState == HuntsmanState.ATTACK_RIFLE) {
-            kotlinx.coroutines.delay(HuntsmanState.ATTACK_RIFLE.durationMillis.toLong())
+            kotlinx.coroutines.delay(HuntsmanState.ATTACK_RIFLE.durationMillis.milliseconds)
             isLeftPressed = false
             isRightPressed = false
             currentState = HuntsmanState.IDLE
