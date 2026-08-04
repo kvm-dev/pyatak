@@ -11,19 +11,12 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -69,22 +62,19 @@ import ru.mykvm.ui.model.TileType
 import kotlin.coroutines.ContinuationInterceptor
 
 val gameMap: List<List<TileType>> = listOf(
-    // 2 - левая стена (граница)
-    // 1 - безопасная трава
-    // 0 - пустота (пропасти, которые нужно перепрыгивать)
-    listOf(2, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 2)
+    listOf(2, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 3)
 ).map { row ->
     row.map { id ->
         when (id) {
             1 -> TileType.GRASS
-            2 -> TileType.WALL
+            2 -> TileType.WALL_START
+            3 -> TileType.WALL_END
             else -> TileType.EMPTY
         }
     }
 }
 // Настройки игрового мира
-const val MAP_COLUMNS = 14
-const val MAP_ROWS = 1
+val MAP_COLUMNS = gameMap[0].size
 const val TILE_DISPLAY_SIZE = 220f
 
 @Composable
@@ -222,32 +212,100 @@ fun TestMap() {
             modifier = Modifier
                 .fillMaxWidth()
                 .height((TILE_DISPLAY_SIZE * 3.5f).dp)
-                // ИСПРАВЛЕНИЕ: Выравниваем игровое поле по нижнему краю экрана
                 .align(Alignment.BottomCenter)
-                // Оставляем отступ снизу в 160.dp, чтобы поле стояло ровно НАД кнопками управления
                 .padding(bottom = 160.dp)
         ) {
+            val spriteBitmap = imageResource(currentState.drawable)
+
+            // Загружаем текстуры для травы и стен (если они есть в TileType)
+            val grassBitmap = imageResource(TileType.GRASS.drawableRes!!)
+            val wallStartBitmap = imageResource(TileType.WALL_START.drawableRes!!)
+            val wallEndBitmap = imageResource(TileType.WALL_END.drawableRes!!)
+            val emptyBitmap = imageResource(TileType.EMPTY.drawableRes!!)
+
+            // Счетчик кадров персонажа
+            val frameAnimatable = remember { Animatable(0f) }
+            LaunchedEffect(currentState, isMoving) {
+                frameAnimatable.snapTo(0f)
+                if (currentState.loop) {
+                    frameAnimatable.animateTo(
+                        targetValue = (currentState.frameCount - 1).toFloat(),
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(durationMillis = currentState.durationMillis, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart
+                        )
+                    )
+                } else {
+                    frameAnimatable.animateTo(
+                        targetValue = (currentState.frameCount - 1).toFloat(),
+                        animationSpec = tween(durationMillis = currentState.durationMillis, easing = LinearEasing)
+                    )
+                    if (currentState == HuntsmanState.ATTACK_RIFLE) {
+                        currentState = if (isLeftPressed || isRightPressed) HuntsmanState.WALK else HuntsmanState.IDLE
+                    }
+                }
+            }
+
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val screenCenterX = size.width / 2f
                 val cameraOffsetX = screenCenterX - (animatedOffsetX.x + TILE_DISPLAY_SIZE / 2f)
-
-                // Вся отрисовка карты смещается к самому низу Canvas (size.height - TILE_DISPLAY_SIZE)
                 val groundY = size.height - TILE_DISPLAY_SIZE
 
+                // 1. ОТРИСОВКА КАРТЫ С КАРТИНКАМИ
                 withTransform({
                     translate(left = cameraOffsetX, top = 0f)
                 }) {
                     for (col in 0 until MAP_COLUMNS) {
                         val tile = gameMap[playerY][col]
-                        drawRect(
-                            color = Color(tile.colorHex),
-                            // ИСПРАВЛЕНИЕ: Тайлы теперь рисуются на линии земли Canvas
-                            topLeft = Offset(col * TILE_DISPLAY_SIZE, groundY),
-                            size = Size(TILE_DISPLAY_SIZE, TILE_DISPLAY_SIZE)
-                        )
+                        val tileTopLeft = Offset(col * TILE_DISPLAY_SIZE, groundY)
+                        val tileSize = Size(TILE_DISPLAY_SIZE, TILE_DISPLAY_SIZE)
+
+                        // Выбираем, что рисовать в зависимости от типа тайла
+                        when (tile) {
+                            TileType.GRASS -> {
+                                drawImage(
+                                    image = grassBitmap,
+                                    dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()),
+                                    dstSize = IntSize(TILE_DISPLAY_SIZE.toInt(), TILE_DISPLAY_SIZE.toInt()),
+                                    filterQuality = FilterQuality.None
+                                )
+                            }
+
+                            TileType.WALL_START -> {
+                                drawImage(
+                                    image = wallStartBitmap,
+                                    dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()),
+                                    dstSize = IntSize(TILE_DISPLAY_SIZE.toInt(), TILE_DISPLAY_SIZE.toInt()),
+                                    filterQuality = FilterQuality.None
+                                )
+                            }
+                            TileType.WALL_END -> {
+                                drawImage(
+                                    image = wallEndBitmap,
+                                    dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()),
+                                    dstSize = IntSize(TILE_DISPLAY_SIZE.toInt(), TILE_DISPLAY_SIZE.toInt()),
+                                    filterQuality = FilterQuality.None
+                                )
+                            }
+                            TileType.EMPTY -> {
+                                // Для ямы оставляем просто пустой закрашенный квадрат (или фоновый цвет бездны)
+//                                drawRect(
+//                                    color = Color(tile.colorHex),
+//                                    topLeft = tileTopLeft,
+//                                    size = tileSize
+//                                )
+                                drawImage(
+                                    image = emptyBitmap,
+                                    dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()),
+                                    dstSize = IntSize(TILE_DISPLAY_SIZE.toInt(), TILE_DISPLAY_SIZE.toInt()),
+                                    filterQuality = FilterQuality.None
+                                )
+                            }
+                        }
                     }
                 }
 
+                // 2. ОТРИСОВКА ПЕРСОНАЖА (Остается без изменений, стоит на groundY)
                 val frame = frameAnimatable.value.toInt().coerceIn(0, currentState.frameCount - 1)
                 val col = frame % currentState.framesPerRow
                 val row = frame / currentState.framesPerRow
@@ -257,7 +315,6 @@ fun TestMap() {
                 val dstSize = IntSize(width = TILE_DISPLAY_SIZE.toInt(), height = TILE_DISPLAY_SIZE.toInt())
 
                 val playerDrawX = screenCenterX - TILE_DISPLAY_SIZE / 2f
-                // ИСПРАВЛЕНИЕ: Персонаж стоит на линии земли (groundY) и прыгает/падает относительно нее
                 val playerDrawY = groundY + jumpOffsetY.value
 
                 withTransform({
@@ -313,8 +370,10 @@ fun TestMap() {
 
                             val nextX = playerX + (if (isLeft) -1 else 1)
                             val canJump = targetX in 0 until MAP_COLUMNS &&
-                                    gameMap[playerY][targetX] != TileType.WALL &&
-                                    gameMap[playerY][nextX] != TileType.WALL
+                                    gameMap[playerY][targetX] != TileType.WALL_START &&
+                                    gameMap[playerY][nextX] != TileType.WALL_START &&
+                                    gameMap[playerY][targetX] != TileType.WALL_END &&
+                                    gameMap[playerY][nextX] != TileType.WALL_END
 
                             if (canJump) {
                                 moveDuration = 500
