@@ -19,6 +19,9 @@ inline fun Modifier.noRippleClickable(crossinline onClick: () -> Unit): Modifier
     }
 }
 
+fun Int.coerceInBox(min: Int, max: Int): Int =
+    if (this < min) min else if (this > max) max else this
+
 @OptIn(ExperimentalMaterial3Api::class)
 val NoRippleConfiguration = RippleConfiguration(
     color = Color.Unspecified,

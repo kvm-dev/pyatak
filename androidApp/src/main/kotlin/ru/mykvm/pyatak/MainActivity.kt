@@ -38,22 +38,6 @@ import ru.mykvm.splash.imp.di.splashModule
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        startKoin {
-            // Provide the Android Context to Koin
-            androidContext(this@MainActivity)
-            androidLogger(Level.DEBUG) // Optional: for logging Koin activities
-            modules(
-                utilsModule,
-//                networkModule,
-//                storagePlatformModule,
-//                storageModule,
-//                networkConnectionModule,
-                languagePlatformModule,
-                languageModule,
-                splashModule,
-//                asModeModule,
-            )
-        }
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
