@@ -47,6 +47,12 @@ import kotlin.time.Duration.Companion.milliseconds
 fun TestMap() {
     val coroutineScope = rememberCoroutineScope()
 
+    var isLevelReady by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(1500.milliseconds) // Даем игре 500мс на спокойную загрузку и центрирование
+        isLevelReady = true
+    }
+
     var playerX by remember { mutableStateOf(1) }
     val playerY = 0
 
@@ -60,32 +66,59 @@ fun TestMap() {
     val jumpOffsetY = remember { Animatable(0f) }
     val isJumping by remember { derivedStateOf { jumpOffsetY.value < 0f } }
     var isFalling by remember { mutableStateOf(false) }
-    var moveDuration by remember { mutableStateOf(180) }
+
+    // Стартовая скорость по умолчанию совпадает со скоростью шага
+    var moveDuration by remember { mutableStateOf(300) }
 
     var health by remember { mutableStateOf(5) }
     var stamina by remember { mutableStateOf(10) }
 
-    // Использование вынесенных структур данных и текстур
-    val textures = LevelTextures.rememberTextures(currentState)
-    val repeatableBrush = remember(textures.mountains) {
-        ShaderBrush(ImageShader(image = textures.mountains, tileModeX = TileMode.Repeated, tileModeY = TileMode.Clamp))
-    }
-
-    var gameTimeMillis by remember { mutableStateOf(0L) }
     LaunchedEffect(Unit) {
-        while (true) { withFrameMillis { time -> gameTimeMillis = time } }
-    }
+        while (true) {
+            // Проверяем каждую секунду
+            kotlinx.coroutines.delay(1000.milliseconds)
 
-    var animationStartTime by remember { mutableStateOf(0L) }
-    LaunchedEffect(currentState) { animationStartTime = gameTimeMillis }
+            // Если персонаж никуда не бежит, не прыгает и не атакует
+            val isResting = currentState == HuntsmanState.IDLE && !isMoving && !isJumping && !isFalling
 
-    LaunchedEffect(currentState, stamina) {
-        if (currentState == HuntsmanState.IDLE && stamina < 10) {
-            kotlinx.coroutines.delay(10000.milliseconds)
-            stamina = (stamina + 1).coerceAtMost(10)
+            if (isResting && stamina < 10) {
+                stamina += 1 // Медленно восстанавливаем по 1 единице
+            }
         }
     }
 
+    // Прогреваем и кэшируем все текстуры сразу при старте игры
+    val textures = LevelTextures.rememberTextures()
+    val repeatableBrush = remember(textures.mountains) {
+        ShaderBrush(
+            ImageShader(
+                image = textures.mountains,
+                tileModeX = TileMode.Repeated,
+                tileModeY = TileMode.Clamp
+            )
+        )
+    }
+
+    // Игровой таймер времени для покадровой анимации (withFrameMillis)
+    var gameTimeMillis by remember { mutableStateOf(0L) }
+
+    // Вместо сырого системного времени делаем стабильный инкремент игрового времени
+    LaunchedEffect(Unit) {
+        while (true) {
+            withFrameMillis {
+                // Каждый кадр экрана (при 60fps это ~16.6мс) прибавляем стабильный шаг
+                gameTimeMillis += 16L
+            }
+        }
+    }
+
+    // Фиксируем время начала текущей анимации в рамках НАШЕГО игрового времени
+    var animationStartTime by remember { mutableStateOf(0L) }
+    LaunchedEffect(currentState) {
+        animationStartTime = gameTimeMillis
+    }
+
+    // Рассчитываем кадр персонажа (Теперь время идет строго от 0мс без скачков)
     val currentFrame = remember(currentState, gameTimeMillis) {
         val totalFrames = currentState.frameCount
         val duration = currentState.durationMillis
@@ -95,23 +128,35 @@ fun TestMap() {
         if (currentState.loop) {
             ((elapsed / frameDuration) % totalFrames).toInt()
         } else {
+            // Для атаки: просто считаем кадр, не переключая стейты внутри лямбды
             val frame = (elapsed / frameDuration).toInt()
-            if (frame >= totalFrames) {
-                coroutineScope.launch {
-                    if (currentState == HuntsmanState.ATTACK_RIFLE) {
-                        currentState = if (isLeftPressed || isRightPressed) HuntsmanState.WALK else HuntsmanState.IDLE
-                    }
-                }
-                totalFrames - 1
-            } else {
-                frame
-            }
+            frame.coerceIn(0, totalFrames - 1)
         }
     }
 
-    // Обработка одиночного шага движения
-    LaunchedEffect(isLeftPressed, isRightPressed, isMoving, isJumping, isFalling, currentState, stamina) {
-        if (isMoving || isJumping || isFalling || currentState == HuntsmanState.ATTACK_RIFLE) return@LaunchedEffect
+    LaunchedEffect(currentState) {
+        if (currentState == HuntsmanState.ATTACK_RIFLE) {
+            // Ждем ровно столько, сколько длится анимация атаки (1000 мс)
+            kotlinx.coroutines.delay(currentState.durationMillis.toLong().milliseconds)
+
+            // Гарантированно возвращаем в IDLE или WALK и сбрасываем кнопки
+            isLeftPressed = false
+            isRightPressed = false
+            currentState = HuntsmanState.IDLE
+        }
+    }
+
+    // Игровой цикл перемещения персонажа (Обычный одиночный шаг)
+    LaunchedEffect(
+        isLeftPressed,
+        isRightPressed,
+        isMoving,
+        isJumping,
+        isFalling,
+        currentState,
+        stamina
+    ) {
+        if (currentState == HuntsmanState.ATTACK_RIFLE || isMoving || isJumping || isFalling || stamina <= 0) return@LaunchedEffect
 
         val dX = when {
             isLeftPressed -> -1
@@ -120,58 +165,44 @@ fun TestMap() {
         }
 
         if (dX != null) {
-            // ИСПРАВЛЕНИЕ: Если стамины нет, сбрасываем нажатие и не даем идти,
-            // но как только стамина восстановится, LaunchedEffect сработает заново на следующий клик!
-            if (stamina <= 0) {
-                isLeftPressed = false
-                isRightPressed = false
-                return@LaunchedEffect
-            }
-
             val newX = playerX + dX
             isLeft = dX < 0
 
             if (newX in 0 until MAP_COLUMNS) {
                 val targetTile = gameMap[playerY][newX]
                 if (targetTile.isWalkable || targetTile == TileType.EMPTY) {
-                    stamina -= 1 // Расходуем выносливость
+                    stamina -= 1
                     moveDuration = 300
                     if (currentState != HuntsmanState.WALK) currentState = HuntsmanState.WALK
                     playerX = newX
                     isMoving = true
-
-                    isLeftPressed = false
-                    isRightPressed = false
-                } else {
-                    if (currentState != HuntsmanState.IDLE) currentState = HuntsmanState.IDLE
-                    isLeftPressed = false
-                    isRightPressed = false
                 }
-            } else {
-                if (currentState != HuntsmanState.IDLE) currentState = HuntsmanState.IDLE
                 isLeftPressed = false
                 isRightPressed = false
             }
         }
     }
 
+    // Плавная интерполяция перемещения персонажа и камеры по оси X
     val animatedOffsetX by animateOffsetAsState(
         targetValue = Offset(playerX * TILE_DISPLAY_SIZE, 0f),
         animationSpec = tween(durationMillis = moveDuration, easing = LinearEasing),
         finishedListener = {
             isMoving = false
 
-            // 1. Если приземлились или зашли в пропасть — плавно падаем вниз и респавнимся
+            // Логика падения в бездну
             if (jumpOffsetY.value == 0f && gameMap[playerY][playerX] == TileType.EMPTY) {
                 isFalling = true
                 currentState = HuntsmanState.IDLE
                 health = (health - 1).coerceAtLeast(0)
 
                 coroutineScope.launch {
-                    jumpOffsetY.animateTo(TILE_DISPLAY_SIZE * 1.5f, tween(250, easing = FastOutLinearInEasing))
+                    jumpOffsetY.animateTo(
+                        TILE_DISPLAY_SIZE * 1.5f,
+                        tween(250, easing = FastOutLinearInEasing)
+                    )
                     if (health <= 0) {
-                        health = 5
-                        stamina = 10
+                        health = 5; stamina = 10
                     }
                     playerX = 1
                     jumpOffsetY.snapTo(0f)
@@ -182,12 +213,9 @@ fun TestMap() {
                 return@animateOffsetAsState
             }
 
-            // 2. ИСПРАВЛЕНИЕ: Безусловный сброс в IDLE для любого типа перемещения!
-            // Раз у нас пошаговое управление (без зажатия), то как только шаг/прыжок/выпад закончился —
-            // мы ГАРАНТИРОВАННО возвращаем персонажа в стойку покоя, если он сейчас не атакует.
+            // Безусловный сброс в IDLE после окончания любого перемещения
             isLeftPressed = false
             isRightPressed = false
-
             if (currentState != HuntsmanState.ATTACK_RIFLE) {
                 currentState = HuntsmanState.IDLE
             }
@@ -197,7 +225,7 @@ fun TestMap() {
     Box(
         modifier = Modifier.fillMaxSize().background(Color(0xFF1A1A1A))
     ) {
-        // Вызов вынесенного Canvas-экрана
+        // Отрисовка игрового экрана (Вынесенный Canvas)
         GameViewport(
             animatedOffsetX = animatedOffsetX.x,
             jumpOffsetY = jumpOffsetY.value,
@@ -213,29 +241,24 @@ fun TestMap() {
                 .padding(bottom = 160.dp)
         )
 
-        // Вызов вынесенного геймпада управления
-        val controlsEnabled = !isFalling && stamina > 0
+        // Панель геймпада со счетчиками (Вынесенный HUD)
+        val controlsEnabled = isLevelReady && !isFalling && stamina > 0
         GameHUDControls(
             health = health,
             stamina = stamina,
-            controlsEnabled = !isFalling && stamina > 0,
+            controlsEnabled = controlsEnabled,
             staminaAvailable = stamina > 0,
-            // ИСПРАВЛЕНИЕ: Простая и надежная установка флагов старта движения
             onLeftClick = { isLeftPressed = true },
             onRightClick = { isRightPressed = true },
             onAttackClick = {
-                stamina -= 1
-                val attackDirection = if (isLeft) -1 else 1
-                val targetX = playerX + attackDirection
-                if (targetX in 0 until MAP_COLUMNS && gameMap[playerY][targetX].isWalkable) {
-                    moveDuration = HuntsmanState.ATTACK_RIFLE.durationMillis
-                    playerX = targetX
-                    isMoving = true
+                // Атака доступна, если есть стамина, персонаж на земле и не находится в процессе шага/прыжка
+                if (stamina > 0 && !isMoving && jumpOffsetY.value == 0f && currentState != HuntsmanState.ATTACK_RIFLE) {
+                    stamina -= 1
+                    currentState = HuntsmanState.ATTACK_RIFLE // Canvas сам сделает визуальный выпад вперед-назад
                 }
-                currentState = HuntsmanState.ATTACK_RIFLE
             },
             onJumpClick = {
-                if (jumpOffsetY.value == 0f && currentState != HuntsmanState.ATTACK_RIFLE) {
+                if (jumpOffsetY.value == 0f && controlsEnabled && currentState != HuntsmanState.ATTACK_RIFLE) {
                     val jumpDirection = if (isLeft) -2 else 2
                     val targetX = playerX + jumpDirection
                     val nextX = playerX + (if (isLeft) -1 else 1)
@@ -248,7 +271,7 @@ fun TestMap() {
 
                     if (canJump) {
                         stamina -= 1
-                        moveDuration = 350 // Время быстрого прыжка
+                        moveDuration = 350 // Скорость быстрого прыжка
                         playerX = targetX
                         isMoving = true
                         currentState = HuntsmanState.WALK
@@ -261,8 +284,13 @@ fun TestMap() {
                         if (gameMap[playerY][playerX] == TileType.EMPTY) {
                             isFalling = true
                             health = (health - 1).coerceAtLeast(0)
-                            jumpOffsetY.animateTo(TILE_DISPLAY_SIZE * 1.5f, tween(250, easing = FastOutLinearInEasing))
-                            if (health <= 0) { health = 5; stamina = 10 }
+                            jumpOffsetY.animateTo(
+                                TILE_DISPLAY_SIZE * 1.5f,
+                                tween(250, easing = FastOutLinearInEasing)
+                            )
+                            if (health <= 0) {
+                                health = 5; stamina = 10
+                            }
                             playerX = 1
                             jumpOffsetY.snapTo(0f)
                             isFalling = false

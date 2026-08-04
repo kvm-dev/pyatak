@@ -27,25 +27,30 @@ val MAP_COLUMNS = gameMap[0].size
 const val TILE_DISPLAY_SIZE = 220f
 
 class LevelTextures(
-    val playerSprite: androidx.compose.ui.graphics.ImageBitmap,
+    val playerIdle: androidx.compose.ui.graphics.ImageBitmap,
+    val playerWalk: androidx.compose.ui.graphics.ImageBitmap,
+    val playerAttack: androidx.compose.ui.graphics.ImageBitmap,
     val grass: androidx.compose.ui.graphics.ImageBitmap,
     val wallStart: androidx.compose.ui.graphics.ImageBitmap,
     val wallEnd: androidx.compose.ui.graphics.ImageBitmap,
+    val empty: androidx.compose.ui.graphics.ImageBitmap,
     val sky: androidx.compose.ui.graphics.ImageBitmap,
-    val mountains: androidx.compose.ui.graphics.ImageBitmap,
-    val empty: androidx.compose.ui.graphics.ImageBitmap
+    val mountains: androidx.compose.ui.graphics.ImageBitmap
 ) {
     companion object {
         @Composable
-        fun rememberTextures(playerState: HuntsmanState): LevelTextures {
+        fun rememberTextures(): LevelTextures {
             return LevelTextures(
-                playerSprite = imageResource(playerState.drawable),
+                // ИСПРАВЛЕНИЕ: Кэшируем ВСЕ три спрайт-листа персонажа сразу на старте!
+                playerIdle = imageResource(HuntsmanState.IDLE.drawable),
+                playerWalk = imageResource(HuntsmanState.WALK.drawable),
+                playerAttack = imageResource(HuntsmanState.ATTACK_RIFLE.drawable),
                 grass = imageResource(TileType.GRASS.drawableRes!!),
                 wallStart = imageResource(TileType.WALL_START.drawableRes!!),
                 wallEnd = imageResource(TileType.WALL_END.drawableRes!!),
+                empty = imageResource(TileType.EMPTY.drawableRes!!),
                 sky = imageResource(Res.drawable.blueSky),
-                mountains = imageResource(Res.drawable.lostCityBackground),
-                empty = imageResource(Res.drawable.emptyTile)
+                mountains = imageResource(Res.drawable.lostCityBackground)
             )
         }
     }

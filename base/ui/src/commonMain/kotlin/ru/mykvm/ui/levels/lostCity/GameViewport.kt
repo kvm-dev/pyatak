@@ -30,10 +30,22 @@ fun GameViewport(
         val mapTotalWidth = MAP_COLUMNS * TILE_DISPLAY_SIZE
         val minCameraX = size.width - mapTotalWidth
 
+        // Ограничение камеры у краев уровня
         val cameraOffsetX = if (mapTotalWidth > size.width) rawCameraOffsetX.coerceIn(minCameraX, 0f) else 0f
         val groundY = size.height - TILE_DISPLAY_SIZE
 
-        // 1. Небо (Параллакс)
+        // ========================================================
+        // СЕКРЕТНЫЙ БЛОК: Прогрев видеопамяти
+        // ========================================================
+        val isFirstFrame = currentFrame == 0 && currentState == HuntsmanState.IDLE
+        if (isFirstFrame) {
+            drawImage(image = textures.playerWalk, dstSize = IntSize(1, 1), dstOffset = IntOffset.Zero)
+            drawImage(image = textures.playerAttack, dstSize = IntSize(1, 1), dstOffset = IntOffset.Zero)
+        }
+
+        // ========================================================
+        // 1. СЛОЙ 1: ДАЛЬНИЙ ПЛАН (НЕБО) - Скорость 5%
+        // ========================================================
         val skyScrollX = cameraOffsetX * 0.05f
         withTransform({ translate(left = skyScrollX, top = 0f) }) {
             drawImage(
@@ -44,7 +56,9 @@ fun GameViewport(
             )
         }
 
-        // 2. Лес (Параллакс)
+        // ========================================================
+        // 2. СЛОЙ 2: СРЕДНИЙ ПЛАН (ГОРЫ / ЛЕС) - Скорость 25%
+        // ========================================================
         val mountainScrollX = cameraOffsetX * 0.25f
         withTransform({ translate(left = mountainScrollX, top = 0f) }) {
             val leftBuffer = 1000f
@@ -56,10 +70,12 @@ fun GameViewport(
             }
         }
 
-        // 3. Игровая Карта
+        // ========================================================
+        // 3. СЛОЙ 3: ИГРОВАЯ КАРТА - Скорость 100%
+        // ========================================================
         withTransform({ translate(left = cameraOffsetX, top = 0f) }) {
             for (col in 0 until MAP_COLUMNS) {
-                // ИСПРАВЛЕНИЕ: Добавлен индекс строки playerY (0), как было в вашем коде
+                // ИСПРАВЛЕНИЕ: Возвращаем [0][col], чтобы читать конкретный тайл из двумерного массива
                 val tile = gameMap[0][col]
                 val tileTopLeft = Offset(col * TILE_DISPLAY_SIZE, groundY)
                 val currentTileSize = IntSize(TILE_DISPLAY_SIZE.toInt(), TILE_DISPLAY_SIZE.toInt())
@@ -68,12 +84,16 @@ fun GameViewport(
                     TileType.GRASS -> drawImage(image = textures.grass, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
                     TileType.WALL_START -> drawImage(image = textures.wallStart, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
                     TileType.WALL_END -> drawImage(image = textures.wallEnd, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
-                    TileType.EMPTY -> drawImage(image = textures.empty, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
+                    TileType.EMPTY -> {
+                        // Пустота — сквозь ямы видно задний план параллакса
+                    }
                 }
             }
         }
 
-        // 4. Персонаж
+        // ========================================================
+        // 4. СЛОЙ 4: ПЕРСОНАЖ
+        // ========================================================
         val frame = currentFrame.coerceIn(0, currentState.frameCount - 1)
         val col = frame % currentState.framesPerRow
         val row = frame / currentState.framesPerRow
@@ -82,7 +102,34 @@ fun GameViewport(
         val srcSize = IntSize(width = 256, height = 256)
         val dstSize = IntSize(width = TILE_DISPLAY_SIZE.toInt(), height = TILE_DISPLAY_SIZE.toInt())
 
-        val playerDrawX = animatedOffsetX + cameraOffsetX
+        val currentBitmap = when(currentState) {
+            HuntsmanState.IDLE -> textures.playerIdle
+            HuntsmanState.WALK -> textures.playerWalk
+            HuntsmanState.ATTACK_RIFLE -> textures.playerAttack
+        }
+
+        // ========================================================
+        // ИСПРАВЛЕНИЕ АТАКИ: Чистый и надежный боевой выпад на основе кадров
+        // ========================================================
+        val attackVisualOffset = if (currentState == HuntsmanState.ATTACK_RIFLE) {
+            // У вас 25 кадров. С 0 по 12 кадр персонаж делает шаг вперед, с 13 по 24 — плавно возвращается назад
+            val offsetProgress = if (frame <= 12) {
+                frame / 12f // идет вперед от 0.0 до 1.0
+            } else {
+                (24 - frame) / 12f // идет назад от 1.0 до 0.0
+            }
+
+            // Сдвигаем визуально на половину нового крупного тайла (так выпад смотрится реалистично)
+            val maxOffsetDistance = TILE_DISPLAY_SIZE * 0.5f
+            val direction = if (isLeft) -1f else 1f
+
+            maxOffsetDistance * offsetProgress * direction
+        } else {
+            0f
+        }
+
+        // Собираем итоговую координату (без дерганья камеры)
+        val playerDrawX = animatedOffsetX + cameraOffsetX + attackVisualOffset
         val playerDrawY = groundY + jumpOffsetY
 
         withTransform({
@@ -92,7 +139,7 @@ fun GameViewport(
             }
         }) {
             drawImage(
-                image = textures.playerSprite,
+                image = currentBitmap,
                 srcOffset = srcOffset,
                 srcSize = srcSize,
                 dstOffset = IntOffset.Zero,
