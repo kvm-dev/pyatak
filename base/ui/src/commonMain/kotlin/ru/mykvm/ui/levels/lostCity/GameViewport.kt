@@ -105,13 +105,13 @@ fun GameViewport(
         val currentBitmap = when(currentState) {
             HuntsmanState.IDLE -> textures.playerIdle
             HuntsmanState.WALK -> textures.playerWalk
-            HuntsmanState.ATTACK_RIFLE -> textures.playerAttack
+            HuntsmanState.ATTACK -> textures.playerAttack
         }
 
         // ========================================================
         // ИСПРАВЛЕНИЕ АТАКИ: Чистый и надежный боевой выпад на основе кадров
         // ========================================================
-        val attackVisualOffset = if (currentState == HuntsmanState.ATTACK_RIFLE) {
+        val attackVisualOffset = if (currentState == HuntsmanState.ATTACK) {
             // У вас 25 кадров. С 0 по 12 кадр персонаж делает шаг вперед, с 13 по 24 — плавно возвращается назад
             val offsetProgress = if (frame <= 12) {
                 frame / 12f // идет вперед от 0.0 до 1.0

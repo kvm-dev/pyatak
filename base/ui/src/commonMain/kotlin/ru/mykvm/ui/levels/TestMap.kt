@@ -95,8 +95,8 @@ fun TestMap() {
 
     // Менеджер автоматического завершения анимации Атаки (ровно через 1000мс)
     LaunchedEffect(currentState) {
-        if (currentState == HuntsmanState.ATTACK_RIFLE) {
-            kotlinx.coroutines.delay(HuntsmanState.ATTACK_RIFLE.durationMillis.milliseconds)
+        if (currentState == HuntsmanState.ATTACK) {
+            kotlinx.coroutines.delay(HuntsmanState.ATTACK.durationMillis.milliseconds)
             isLeftPressed = false
             isRightPressed = false
             currentState = HuntsmanState.IDLE
@@ -120,7 +120,7 @@ fun TestMap() {
 
     // Игровой цикл перемещения персонажа (Обычный одиночный шаг)
     LaunchedEffect(isLeftPressed, isRightPressed, isMoving, isJumping, isFalling, currentState, stamina) {
-        if (isMoving || isJumping || isFalling || stamina <= 0 || currentState == HuntsmanState.ATTACK_RIFLE) return@LaunchedEffect
+        if (isMoving || isJumping || isFalling || stamina <= 0 || currentState == HuntsmanState.ATTACK) return@LaunchedEffect
 
         val dX = when {
             isLeftPressed -> -1
@@ -180,7 +180,7 @@ fun TestMap() {
             // Гарантированный сброс в IDLE после абсолютно любого движения
             isLeftPressed = false
             isRightPressed = false
-            if (currentState != HuntsmanState.ATTACK_RIFLE) {
+            if (currentState != HuntsmanState.ATTACK) {
                 currentState = HuntsmanState.IDLE
             }
         }
@@ -216,13 +216,13 @@ fun TestMap() {
             onRightClick = { isRightPressed = true },
             // Стабильная атака на месте (Canvas сам сделает выпад по кадрам)
             onAttackClick = {
-                if (stamina > 0 && !isMoving && jumpOffsetY.value == 0f && currentState != HuntsmanState.ATTACK_RIFLE) {
+                if (stamina > 0 && !isMoving && jumpOffsetY.value == 0f && currentState != HuntsmanState.ATTACK) {
                     stamina -= 1
-                    currentState = HuntsmanState.ATTACK_RIFLE
+                    currentState = HuntsmanState.ATTACK
                 }
             },
             onJumpClick = {
-                if (jumpOffsetY.value == 0f && controlsEnabled && currentState != HuntsmanState.ATTACK_RIFLE) {
+                if (jumpOffsetY.value == 0f && controlsEnabled && currentState != HuntsmanState.ATTACK) {
                     val jumpDirection = if (isLeft) -2 else 2
                     val targetX = playerX + jumpDirection
                     val nextX = playerX + (if (isLeft) -1 else 1)

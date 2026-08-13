@@ -44,7 +44,7 @@ class LevelTextures(
                 // ИСПРАВЛЕНИЕ: Кэшируем ВСЕ три спрайт-листа персонажа сразу на старте!
                 playerIdle = imageResource(HuntsmanState.IDLE.drawable),
                 playerWalk = imageResource(HuntsmanState.WALK.drawable),
-                playerAttack = imageResource(HuntsmanState.ATTACK_RIFLE.drawable),
+                playerAttack = imageResource(HuntsmanState.ATTACK.drawable),
                 grass = imageResource(TileType.GRASS.drawableRes!!),
                 wallStart = imageResource(TileType.WALL_START.drawableRes!!),
                 wallEnd = imageResource(TileType.WALL_END.drawableRes!!),

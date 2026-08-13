@@ -8,24 +8,18 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.imageResource
 import ru.mykvm.ui.ComposeResources.Res
-import ru.mykvm.ui.ComposeResources.huntsmanAttackRifle
+import ru.mykvm.ui.ComposeResources.huntsmanAttack
 import ru.mykvm.ui.ComposeResources.huntsmanIdle
 import ru.mykvm.ui.ComposeResources.huntsmanWalk
-import ru.mykvm.ui.utils.coerceInBox
-import kotlin.math.ceil
 
 @Composable
 fun Huntsman(
@@ -196,5 +190,5 @@ enum class HuntsmanState(
 ) {
     IDLE(Res.drawable.huntsmanIdle, frameCount = 25, framesPerRow = 5, durationMillis = 500, loop = true),
     WALK(Res.drawable.huntsmanWalk, frameCount = 25, framesPerRow = 5, durationMillis = 1000, loop = true),
-    ATTACK_RIFLE(Res.drawable.huntsmanAttackRifle, frameCount = 25, framesPerRow = 5, durationMillis = 1000, loop = false)
+    ATTACK(Res.drawable.huntsmanAttack, frameCount = 25, framesPerRow = 5, durationMillis = 1000, loop = false)
 }
