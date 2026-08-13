@@ -7,6 +7,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
 import ru.mykvm.splash.imp.presentation.viewmodel.SplashScreenViewModel
+import ru.mykvm.ui.hero.HeroClass
 import ru.mykvm.ui.levels.TestMap
 
 @Composable
@@ -27,7 +28,8 @@ fun SplashScreen(viewModel: SplashScreenViewModel = koinViewModel(), onNavigateT
         }
 
         SplashScreenViewState.Loading-> {
-            TestMap()
+            TestMap(initialTeamClasses = listOf(HeroClass.DOCTOR, HeroClass.SHAMAN, HeroClass.DOCTOR))
+
 //            Box(
 //                modifier = Modifier
 //                    .fillMaxHeight()
