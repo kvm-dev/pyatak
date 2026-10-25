@@ -1,6 +1,5 @@
 package ru.mykvm.ui.levels
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,8 +66,8 @@ fun TestMap(initialTeamClasses: List<HeroClass>) {
 
     // Текстуры
     val textures = LevelTextures.rememberTextures()
-    val repeatableBrush = remember(textures.mountains) {
-        ShaderBrush(ImageShader(image = textures.mountains, tileModeX = TileMode.Repeated, tileModeY = TileMode.Clamp))
+    val repeatableBrush = remember(textures.levelScene) {
+        ShaderBrush(ImageShader(image = textures.levelScene, tileModeX = TileMode.Repeated, tileModeY = TileMode.Clamp))
     }
 
     // Стабильный игровой таймер кадров (один на всю игру)

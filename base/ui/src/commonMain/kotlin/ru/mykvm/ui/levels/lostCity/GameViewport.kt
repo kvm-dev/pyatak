@@ -82,7 +82,7 @@ fun GameViewport(
                 val currentTileSize = IntSize(TILE_DISPLAY_SIZE.toInt(), TILE_DISPLAY_SIZE.toInt())
 
                 when (tile) {
-                    TileType.GRASS -> drawImage(image = textures.grass, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
+                    TileType.GRASS -> drawImage(image = textures.surface, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
                     TileType.WALL_START -> drawImage(image = textures.wallStart, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
                     TileType.WALL_END -> drawImage(image = textures.wallEnd, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
                     TileType.EMPTY -> {
