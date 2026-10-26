@@ -3,18 +3,24 @@ package ru.mykvm.ui.control
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
+import androidx.compose.ui.graphics.Color
+import ru.mykvm.ui.ComposeResources.Res
+import ru.mykvm.ui.ComposeResources.deadAvatar
 import ru.mykvm.ui.hero.HeroState
 
 @Composable
@@ -33,25 +39,47 @@ fun TopHeroSelector(
     ) {
         team.forEachIndexed { index, hero ->
             val isActive = index == activeHeroIndex
+            val isDead = hero.health <= 0 // 🔥 Проверяем, жив ли персонаж
+            val interactionSource = remember { MutableInteractionSource() }
+
+
             Box(
                 modifier = Modifier
-                    .size(64.dp) // Ваши иконки 64x64 пикселя встанут идеально
+                    .size(64.dp)
                     .background(
-                        color = if (isActive) Color(0xFFFFB300) else Color(0xFF424242),
+                        color = when {
+                            isDead -> Color(0xFF212121) // Темный фон для мертвеца
+                            isActive -> Color(0xFFFFB300)
+                            else -> Color(0xFF424242)
+                        },
                         shape = RoundedCornerShape(12.dp)
                     )
                     .border(
-                        width = if (isActive) 3.dp else 1.dp,
-                        color = if (isActive) Color.White else Color(0xFF666666),
+                        width = if (isActive && !isDead) 3.dp else 1.dp,
+                        color = if (isActive && !isDead) Color.White else Color(0xFF666666),
                         shape = RoundedCornerShape(12.dp)
                     )
-                    .clickable { onHeroSelected(index) },
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = ripple(
+                            bounded = true,
+                            color = Color.White,
+                            radius = 32.dp
+                        )
+                    ) {
+                        if (!isDead) onHeroSelected(index)
+                    },
                 contentAlignment = Alignment.Center
             ) {
+                // Если персонаж умер, подставляем иконку могилы/черепа, иначе его обычный аватар
+                val avatarResource = if (isDead) Res.drawable.deadAvatar else hero.heroType.icon
+
                 androidx.compose.foundation.Image(
-                    painter = painterResource(hero.heroType.icon),
+                    painter = painterResource(avatarResource),
                     contentDescription = hero.heroType.displayName,
-                    modifier = Modifier.size(54.dp) // Небольшой внутренний отступ для рамки
+                    modifier = Modifier.size(54.dp),
+                    // Добавляем черно-белый/затемняющий эффект для мертвых персонажей
+                    colorFilter = if (isDead) androidx.compose.ui.graphics.ColorFilter.tint(Color(0xAA000000), androidx.compose.ui.graphics.BlendMode.SrcAtop) else null
                 )
             }
         }

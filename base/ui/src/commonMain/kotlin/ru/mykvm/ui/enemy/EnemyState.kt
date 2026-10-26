@@ -27,6 +27,11 @@ class EnemyState(
     // Таймер блокировки ИИ (например, когда враг получил урон и застыл в анимации SPECIAL)
     var aiStunDurationMillis by mutableStateOf(0L)
 
+    var jumpOffsetY by mutableStateOf(0f)
+
+    var isBossSecondPhase by mutableStateOf(false)
+    var hasResurrected by mutableStateOf(false)
+
     val currentConfig: AnimationConfig
         get() = enemyType.animations[currentAnim] ?: enemyType.animations[EnemyAnimation.IDLE]!!
 }

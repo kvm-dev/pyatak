@@ -145,7 +145,7 @@ fun GameViewport(
             // Достаем плавную интерполированную координату врага
             val animatedX = animatedEnemyPositions[enemy]?.value ?: (enemy.x * TILE_DISPLAY_SIZE)
             val enemyDrawX = animatedX + finalCameraX
-            val enemyDrawY = groundY
+            val enemyDrawY = groundY + enemy.jumpOffsetY
 
             // 1. Отрисовка спрайта врага
             withTransform({
@@ -174,24 +174,35 @@ fun GameViewport(
                 fontWeight = FontWeight.Bold
             )
 
+            // Измеряем текст для вычисления его точных габаритов
             val textLayoutResult = textMeasurer.measure(text = hudText, style = textStyle)
+            val textWidth = textLayoutResult.size.width.toFloat()
 
             // Центрируем горизонтально над спрайтом и приподнимаем на 25 пикселей вверх
-            val textX = enemyDrawX + (TILE_DISPLAY_SIZE / 2f) - (textLayoutResult.size.width / 2f)
+            val textX = enemyDrawX + (TILE_DISPLAY_SIZE / 2f) - (textWidth / 2f)
             val textY = enemyDrawY - 25f
 
-            drawText(
-                textMeasurer = textMeasurer,
-                text = hudText,
-                style = textStyle,
-                topLeft = Offset(textX, textY)
-            )
+            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверяем, влезает ли текст в экран целиком
+            // Левая граница текста не должна быть меньше нуля,
+            // а правая (координата + ширина) не должна выходить за пределы размера Canvas (size.width)
+            val isTextFullyVisible = textX >= 0f && (textX + textWidth) <= size.width
+
+            if (isTextFullyVisible) {
+                drawText(
+                    textMeasurer = textMeasurer,
+                    text = hudText,
+                    style = textStyle,
+                    topLeft = Offset(textX, textY)
+                )
+            }
         }
 
         // ========================================================
         // 4. СЛОЙ 4: ОТРЕСОВКА ВСЕЙ КОМАНДЫ (3 ПЕРСОНАЖА)
         // ========================================================
         team.forEach { hero ->
+            if (hero.health <= 0) return@forEach
+
             val config = hero.currentConfig
             val currentBitmap = heroBitmaps[hero.heroType] ?: return@forEach
 

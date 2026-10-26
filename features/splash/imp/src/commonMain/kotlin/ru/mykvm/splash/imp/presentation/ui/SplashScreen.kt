@@ -28,7 +28,7 @@ fun SplashScreen(viewModel: SplashScreenViewModel = koinViewModel(), onNavigateT
         }
 
         SplashScreenViewState.Loading-> {
-            TestMap(initialTeamClasses = listOf(HeroType.HUNTSMAN, HeroType.BOY_SLINGSHOT, HeroType.SHAMAN))
+            TestMap(initialTeamClasses = listOf(HeroType.HUNTSMAN, HeroType.BOY_LIGHTSABER, HeroType.DOCTOR), onGameOver = {})
 
 //            Box(
 //                modifier = Modifier
