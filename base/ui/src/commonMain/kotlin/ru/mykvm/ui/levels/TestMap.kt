@@ -116,7 +116,7 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
     // Железобетонный таймер стамины для ВСЕХ персонажей в команде
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(1.seconds) // Проверка каждую секунду
+            kotlinx.coroutines.delay(3.seconds) // Проверка каждую секунду
 
             team.forEach { hero ->
                 // Условие покоя стало намного проще и надежнее:
@@ -125,7 +125,7 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                     hero.jumpOffsetY.value == 0f && !hero.isFalling && !isLeftPressed && !isRightPressed
 
                 if (isActuallyResting && hero.stamina < 10) {
-                    hero.stamina += 2
+                    hero.stamina += 1
 
                     // Если стамина восстановилась хотя бы до 1, а персонаж завис в анимации WALK,
                     // мягко возвращаем его в IDLE, чтобы вернуть управление
