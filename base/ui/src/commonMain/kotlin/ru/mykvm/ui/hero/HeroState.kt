@@ -8,7 +8,7 @@ import ru.mykvm.ui.model.AnimationConfig
 import ru.mykvm.ui.model.CharacterAnimation
 
 class HeroState(
-    val heroClass: HeroClass,
+    val heroType: HeroType,
     startX: Int,
     startHealth: Int = 5,
     startStamina: Int = 10
@@ -32,5 +32,5 @@ class HeroState(
 
     // Вспомогательный метод для быстрого получения текущего конфига анимации
     val currentConfig: AnimationConfig
-        get() = heroClass.animations[currentAnim] ?: heroClass.animations[CharacterAnimation.IDLE]!!
+        get() = heroType.animations[currentAnim] ?: heroType.animations[CharacterAnimation.IDLE]!!
 }

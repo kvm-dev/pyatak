@@ -49,8 +49,8 @@ fun TopHeroSelector(
                 contentAlignment = Alignment.Center
             ) {
                 androidx.compose.foundation.Image(
-                    painter = painterResource(hero.heroClass.icon),
-                    contentDescription = hero.heroClass.displayName,
+                    painter = painterResource(hero.heroType.icon),
+                    contentDescription = hero.heroType.displayName,
                     modifier = Modifier.size(54.dp) // Небольшой внутренний отступ для рамки
                 )
             }

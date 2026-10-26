@@ -6,37 +6,60 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import org.jetbrains.compose.resources.imageResource
+import androidx.compose.ui.graphics.FilterQuality
+import ru.mykvm.ui.enemy.EnemyState
 import ru.mykvm.ui.hero.HeroState
 import ru.mykvm.ui.model.CharacterAnimation
+import ru.mykvm.ui.model.EnemyAnimation
 import ru.mykvm.ui.model.TileType
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.drawText
 
 @Composable
 fun GameViewport(
     cameraOffsetX: Float,       // Переданный интерполированный X активного героя
     activeHero: HeroState,      // Ссылка на текущего управляемого героя
     team: List<HeroState>,      // Список всей тройки для их одновременной отрисовки
+    enemies: List<EnemyState>,  // Список всех врагов на уровне
     currentFrame: Int,          // Текущий кадр активного героя из TestMap
-    gameTimeMillis: Long, // игровой таймер
+    gameTimeMillis: Long,       // Игровой таймер
     textures: LevelTextures,
     repeatableBrush: Brush,
     modifier: Modifier = Modifier
 ) {
-    // Получаем предзагруженные ImageBitmap для каждого класса из общего конфига
-    // (Рекомендуется кэшировать их в LevelTextures, чтобы не дергать imageResource каждый кадр)
+    // Текстовый измеритель для рисования имен и здоровья над головами врагов
+    val textMeasurer = rememberTextMeasurer()
+
+    // Предзагрузка битмапов для классов героев
     val heroBitmaps = team.associate { hero ->
         val config = hero.currentConfig
-        hero.heroClass to imageResource(config.drawable)
+        hero.heroType to imageResource(config.drawable)
+    }
+
+    // Рассчитываем плавные анимации позиций для каждого врага в контексте @Composable
+    val animatedEnemyPositions = enemies.associateWith { enemy ->
+        animateFloatAsState(
+            targetValue = enemy.x * TILE_DISPLAY_SIZE,
+            animationSpec = tween(durationMillis = 300, easing = LinearEasing),
+            label = "EnemyX_${enemy.enemyType.displayName}"
+        )
     }
 
     Canvas(modifier = modifier) {
         val screenCenterX = size.width / 2f
 
-        // 🔥 ИСПРАВЛЕНИЕ: Считаем сдвиг камеры напрямую от cameraOffsetX без лишних прибавок!
+        // Считаем сдвиг камеры напрямую от cameraOffsetX
         val rawCameraOffsetX = screenCenterX - (cameraOffsetX + TILE_DISPLAY_SIZE / 2f)
 
         val mapTotalWidth = MAP_COLUMNS * TILE_DISPLAY_SIZE
@@ -45,6 +68,7 @@ fun GameViewport(
         // Ограничение камеры у краев уровня
         val finalCameraX = if (mapTotalWidth > size.width) rawCameraOffsetX.coerceIn(minCameraX, 0f) else 0f
         val groundY = size.height - TILE_DISPLAY_SIZE
+
         // ========================================================
         // 1. СЛОЙ 1: ДАЛЬНИЙ ПЛАН (НЕБО) - Скорость 5%
         // ========================================================
@@ -93,18 +117,88 @@ fun GameViewport(
         }
 
         // ========================================================
+        // СЛОЙ 3.5: ОТРЕСОВКА ВРАГОВ И ИХ ИНДИКАТОРОВ ЖИЗНЕЙ
+        // ========================================================
+        enemies.forEach { enemy ->
+            if (enemy.health <= 0) return@forEach // Мертвых полностью скрываем
+
+            val config = enemy.currentConfig
+            val enemyAnims = textures.enemyBitmaps[enemy.enemyType] ?: return@forEach
+            val currentBitmap = enemyAnims[enemy.currentAnim] ?: enemyAnims[EnemyAnimation.IDLE] ?: return@forEach
+
+            // Расчет текущего кадра анимации врага
+            val elapsed = gameTimeMillis - enemy.animationStartTime
+            val frameDuration = (config.durationMillis / config.frameCount).coerceAtLeast(1)
+            val frame = if (config.loop) {
+                ((elapsed / frameDuration) % config.frameCount).toInt()
+            } else {
+                (elapsed / frameDuration).toInt().coerceIn(0, config.frameCount - 1)
+            }
+
+            val col = frame % config.framesPerRow
+            val row = frame / config.framesPerRow
+
+            val srcOffset = IntOffset(x = col * 256, y = row * 256)
+            val srcSize = IntSize(256, 256)
+            val dstSize = IntSize(TILE_DISPLAY_SIZE.toInt(), TILE_DISPLAY_SIZE.toInt())
+
+            // Достаем плавную интерполированную координату врага
+            val animatedX = animatedEnemyPositions[enemy]?.value ?: (enemy.x * TILE_DISPLAY_SIZE)
+            val enemyDrawX = animatedX + finalCameraX
+            val enemyDrawY = groundY
+
+            // 1. Отрисовка спрайта врага
+            withTransform({
+                translate(left = enemyDrawX, top = enemyDrawY)
+                if (enemy.isLeft) {
+                    scale(scaleX = -1f, scaleY = 1f, pivot = Offset(TILE_DISPLAY_SIZE / 2f, TILE_DISPLAY_SIZE / 2f))
+                }
+            }) {
+                drawImage(
+                    image = currentBitmap,
+                    srcOffset = srcOffset,
+                    srcSize = srcSize,
+                    dstOffset = IntOffset.Zero,
+                    dstSize = dstSize,
+                    filterQuality = FilterQuality.None
+                )
+            }
+
+            // 2. Отрисовка текста (Название и Сердечко с цифрой жизней) над головой врага
+            val hudText = "${enemy.enemyType.displayName.uppercase()}  ❤️ ${enemy.health}"
+
+            val isBoss = enemy.enemyType.displayName.contains("Босс")
+            val textStyle = TextStyle(
+                color = if (isBoss) Color(0xFFFF3D00) else Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            val textLayoutResult = textMeasurer.measure(text = hudText, style = textStyle)
+
+            // Центрируем горизонтально над спрайтом и приподнимаем на 25 пикселей вверх
+            val textX = enemyDrawX + (TILE_DISPLAY_SIZE / 2f) - (textLayoutResult.size.width / 2f)
+            val textY = enemyDrawY - 25f
+
+            drawText(
+                textMeasurer = textMeasurer,
+                text = hudText,
+                style = textStyle,
+                topLeft = Offset(textX, textY)
+            )
+        }
+
+        // ========================================================
         // 4. СЛОЙ 4: ОТРЕСОВКА ВСЕЙ КОМАНДЫ (3 ПЕРСОНАЖА)
         // ========================================================
         team.forEach { hero ->
             val config = hero.currentConfig
-            val currentBitmap = heroBitmaps[hero.heroClass] ?: return@forEach
+            val currentBitmap = heroBitmaps[hero.heroType] ?: return@forEach
 
             // Динамический расчет кадра для каждого героя
             val frame = if (hero === activeHero) {
-                // Активный персонаж берет идеально синхронизированный кадр из TestMap
                 currentFrame.coerceIn(0, config.frameCount - 1)
             } else {
-                // Неактивные персонажи крутят анимацию IDLE по кругу, используя общее время игры
                 val elapsed = gameTimeMillis.coerceAtLeast(0L)
                 val frameDuration = (config.durationMillis / config.frameCount).coerceAtLeast(1)
                 ((elapsed / frameDuration) % config.frameCount).toInt()
@@ -116,15 +210,13 @@ fun GameViewport(
             val srcOffset = IntOffset(x = col * 256, y = row * 256)
             val srcSize = IntSize(width = 256, height = 256)
             val dstSize = IntSize(width = TILE_DISPLAY_SIZE.toInt(), height = TILE_DISPLAY_SIZE.toInt())
-
-            // Рассчитываем позицию X в игровом мире
+// Рассчитываем позицию X в игровом мире
             val worldX = if (hero === activeHero) {
-                cameraOffsetX // Активный плавно перемещается (включая прыжок) через animateOffsetAsState
+                cameraOffsetX
             } else {
-                hero.playerX * TILE_DISPLAY_SIZE // Неактивные стоят на своих фиксированных плитках
+                hero.playerX * TILE_DISPLAY_SIZE
             }
-
-            // Боевой выпад атаки (срабатывает, только если этот конкретный герой нажал ATK)
+// Боевой выпад атаки (срабатывает, только если этот конкретный герой нажал ATK)
             val attackVisualOffset = if (hero.currentAnim == CharacterAnimation.ATTACK) {
                 val offsetProgress = if (frame <= 12) frame / 12f else (24 - frame) / 12f
                 val maxOffsetDistance = TILE_DISPLAY_SIZE * 0.5f
@@ -133,15 +225,12 @@ fun GameViewport(
             } else {
                 0f
             }
-
-            // Итоговые экранные координаты с учетом сдвига камеры и высоты прыжка
+// Итоговые экранные координаты с учетом сдвига камеры и высоты прыжка
             val playerDrawX = worldX + finalCameraX + attackVisualOffset
             val playerDrawY = groundY + hero.jumpOffsetY.value
-
             withTransform({
                 translate(left = playerDrawX, top = playerDrawY)
                 if (hero.isLeft) {
-                    // Отражаем спрайт по горизонтали, если персонаж смотрит влево
                     scale(scaleX = -1f, scaleY = 1f, pivot = Offset(TILE_DISPLAY_SIZE / 2f, TILE_DISPLAY_SIZE / 2f))
                 }
             }) {
@@ -151,7 +240,7 @@ fun GameViewport(
                     srcSize = srcSize,
                     dstOffset = IntOffset.Zero,
                     dstSize = dstSize,
-                    filterQuality = FilterQuality.None // Сохраняет пиксель-арт четким
+                    filterQuality = FilterQuality.None
                 )
             }
         }

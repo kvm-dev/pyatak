@@ -55,7 +55,7 @@ fun BottomGamePad(
             modifier = Modifier.align(Alignment.Center)
         ) {
             Text(
-                text = activeHero.heroClass.displayName.uppercase(),
+                text = activeHero.heroType.displayName.uppercase(),
                 color = Color(0xFFFFB300),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp

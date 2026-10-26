@@ -2,7 +2,10 @@ package ru.mykvm.ui.hero
 
 import org.jetbrains.compose.resources.DrawableResource
 import ru.mykvm.ui.ComposeResources.Res
+import ru.mykvm.ui.ComposeResources.boyAttackEnergyBow
+import ru.mykvm.ui.ComposeResources.boyAttackLightSaber
 import ru.mykvm.ui.ComposeResources.boyAttackSlingshot
+import ru.mykvm.ui.ComposeResources.boyAttackSword
 import ru.mykvm.ui.ComposeResources.boyAvatar
 import ru.mykvm.ui.ComposeResources.boyIdle
 import ru.mykvm.ui.ComposeResources.boyJump
@@ -12,7 +15,10 @@ import ru.mykvm.ui.ComposeResources.doctorAvatar
 import ru.mykvm.ui.ComposeResources.doctorIdle
 import ru.mykvm.ui.ComposeResources.doctorJump
 import ru.mykvm.ui.ComposeResources.doctorWalk
+import ru.mykvm.ui.ComposeResources.girlAttackEnergyBow
+import ru.mykvm.ui.ComposeResources.girlAttackLightSaber
 import ru.mykvm.ui.ComposeResources.girlAttackSlingshot
+import ru.mykvm.ui.ComposeResources.girlAttackSword
 import ru.mykvm.ui.ComposeResources.girlAvatar
 import ru.mykvm.ui.ComposeResources.girlIdle
 import ru.mykvm.ui.ComposeResources.girlJump
@@ -40,14 +46,16 @@ import ru.mykvm.ui.ComposeResources.shamanWalk
 import ru.mykvm.ui.model.AnimationConfig
 import ru.mykvm.ui.model.CharacterAnimation
 
-enum class HeroClass(
+enum class HeroType(
     val displayName: String,
     val icon: DrawableResource, // Ваша иконка 64x64
-    val animations: Map<CharacterAnimation, AnimationConfig>
+    val animations: Map<CharacterAnimation, AnimationConfig>,
+    val isRangeAttack: Boolean = false
 ) {
     HUNTSMAN(
         displayName = "Охотник",
         icon = Res.drawable.huntsmanAvatar, // Замените на ваши ресурсы иконок
+        isRangeAttack = true,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.huntsmanIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(
@@ -73,8 +81,9 @@ enum class HeroClass(
             ) // Или свой спрайт
         )
     ),
-    BOY(
+    BOY_SLINGSHOT(
         displayName = "Мальчик",
+        isRangeAttack = true,
         icon = Res.drawable.boyAvatar,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.boyIdle, 25, 5, 500, true),
@@ -89,14 +98,113 @@ enum class HeroClass(
             CharacterAnimation.JUMP to AnimationConfig(Res.drawable.boyJump, 25, 5, 1000, true)
         )
     ),
-    GIRL(
+    BOY_SWORD(
+        displayName = "Мальчик",
+        icon = Res.drawable.boyAvatar,
+        animations = mapOf(
+            CharacterAnimation.IDLE to AnimationConfig(Res.drawable.boyIdle, 25, 5, 500, true),
+            CharacterAnimation.WALK to AnimationConfig(Res.drawable.boyWalk, 25, 5, 1000, true),
+            CharacterAnimation.ATTACK to AnimationConfig(
+                Res.drawable.boyAttackSword,
+                25,
+                5,
+                1000,
+                false
+            ),
+            CharacterAnimation.JUMP to AnimationConfig(Res.drawable.boyJump, 25, 5, 1000, true)
+        )
+    ),
+    BOY_BOW(
+        displayName = "Мальчик",
+        isRangeAttack = true,
+        icon = Res.drawable.boyAvatar,
+        animations = mapOf(
+            CharacterAnimation.IDLE to AnimationConfig(Res.drawable.boyIdle, 25, 5, 500, true),
+            CharacterAnimation.WALK to AnimationConfig(Res.drawable.boyWalk, 25, 5, 1000, true),
+            CharacterAnimation.ATTACK to AnimationConfig(
+                Res.drawable.boyAttackEnergyBow,
+                25,
+                5,
+                1000,
+                false
+            ),
+            CharacterAnimation.JUMP to AnimationConfig(Res.drawable.boyJump, 25, 5, 1000, true)
+        )
+    ),
+    BOY_LIGHTSABER(
+        displayName = "Мальчик",
+        icon = Res.drawable.boyAvatar,
+        animations = mapOf(
+            CharacterAnimation.IDLE to AnimationConfig(Res.drawable.boyIdle, 25, 5, 500, true),
+            CharacterAnimation.WALK to AnimationConfig(Res.drawable.boyWalk, 25, 5, 1000, true),
+            CharacterAnimation.ATTACK to AnimationConfig(
+                Res.drawable.boyAttackLightSaber,
+                25,
+                5,
+                1000,
+                false
+            ),
+            CharacterAnimation.JUMP to AnimationConfig(Res.drawable.boyJump, 25, 5, 1000, true)
+        )
+    ),
+    GIRL_SLINGSHOT(
         displayName = "Девочка",
+        isRangeAttack = true,
         icon = Res.drawable.girlAvatar,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.girlIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(Res.drawable.girlWalk, 25, 5, 1000, true),
             CharacterAnimation.ATTACK to AnimationConfig(
                 Res.drawable.girlAttackSlingshot,
+                25,
+                5,
+                1000,
+                false
+            ),
+            CharacterAnimation.JUMP to AnimationConfig(Res.drawable.girlJump, 25, 5, 1000, true)
+        )
+    ),
+    GIRL_SWORD(
+        displayName = "Девочка",
+        icon = Res.drawable.girlAvatar,
+        animations = mapOf(
+            CharacterAnimation.IDLE to AnimationConfig(Res.drawable.girlIdle, 25, 5, 500, true),
+            CharacterAnimation.WALK to AnimationConfig(Res.drawable.girlWalk, 25, 5, 1000, true),
+            CharacterAnimation.ATTACK to AnimationConfig(
+                Res.drawable.girlAttackSword,
+                25,
+                5,
+                1000,
+                false
+            ),
+            CharacterAnimation.JUMP to AnimationConfig(Res.drawable.girlJump, 25, 5, 1000, true)
+        )
+    ),
+    GIRL_BOW(
+        displayName = "Девочка",
+        isRangeAttack = true,
+        icon = Res.drawable.girlAvatar,
+        animations = mapOf(
+            CharacterAnimation.IDLE to AnimationConfig(Res.drawable.girlIdle, 25, 5, 500, true),
+            CharacterAnimation.WALK to AnimationConfig(Res.drawable.girlWalk, 25, 5, 1000, true),
+            CharacterAnimation.ATTACK to AnimationConfig(
+                Res.drawable.girlAttackEnergyBow,
+                25,
+                5,
+                1000,
+                false
+            ),
+            CharacterAnimation.JUMP to AnimationConfig(Res.drawable.girlJump, 25, 5, 1000, true)
+        )
+    ),
+    GIRL_LIGHTSABER(
+        displayName = "Девочка",
+        icon = Res.drawable.girlAvatar,
+        animations = mapOf(
+            CharacterAnimation.IDLE to AnimationConfig(Res.drawable.girlIdle, 25, 5, 500, true),
+            CharacterAnimation.WALK to AnimationConfig(Res.drawable.girlWalk, 25, 5, 1000, true),
+            CharacterAnimation.ATTACK to AnimationConfig(
+                Res.drawable.girlAttackLightSaber,
                 25,
                 5,
                 1000,
@@ -161,6 +269,7 @@ enum class HeroClass(
     ),
     SHAMAN(
         displayName = "Шаман",
+        isRangeAttack = true,
         icon = Res.drawable.shamanAvatar,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.shamanIdle, 25, 5, 500, true),

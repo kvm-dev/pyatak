@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.painterResource
 import ru.mykvm.ui.hero.HeroState
 
@@ -70,8 +69,8 @@ fun GameHUDControls(
                 ) {
                     // Отрисовка вашей иконки 64x64
                     androidx.compose.foundation.Image(
-                        painter = painterResource(hero.heroClass.icon), // Используем painterResource вместо imageResource
-                        contentDescription = hero.heroClass.displayName,
+                        painter = painterResource(hero.heroType.icon), // Используем painterResource вместо imageResource
+                        contentDescription = hero.heroType.displayName,
                         modifier = Modifier.size(48.dp)
                     )
                 }
@@ -90,7 +89,7 @@ fun GameHUDControls(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.align(Alignment.Center)
         ) {
-            Text(text = activeHero.heroClass.displayName, color = Color.White, fontSize = 12.sp, maxLines = 1)
+            Text(text = activeHero.heroType.displayName, color = Color.White, fontSize = 12.sp, maxLines = 1)
             Text(text = "HP: " + "❤️ ".repeat(activeHero.health).ifEmpty { "💀" }, color = Color.White, fontSize = 14.sp)
             Text(
                 text = "STAMINA: ⚡ ${activeHero.stamina}/10",

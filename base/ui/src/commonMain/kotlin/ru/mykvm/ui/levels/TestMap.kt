@@ -31,7 +31,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import ru.mykvm.ui.control.BottomGamePad
 import ru.mykvm.ui.control.TopHeroSelector
-import ru.mykvm.ui.hero.HeroClass
+import ru.mykvm.ui.enemy.EnemyState
+import ru.mykvm.ui.enemy.EnemyType
+import ru.mykvm.ui.hero.HeroType
 import ru.mykvm.ui.hero.HeroState
 import ru.mykvm.ui.levels.lostCity.GameViewport
 import ru.mykvm.ui.levels.lostCity.LevelTextures
@@ -39,12 +41,14 @@ import ru.mykvm.ui.levels.lostCity.MAP_COLUMNS
 import ru.mykvm.ui.levels.lostCity.TILE_DISPLAY_SIZE
 import ru.mykvm.ui.levels.lostCity.gameMap
 import ru.mykvm.ui.model.CharacterAnimation
+import ru.mykvm.ui.model.EnemyAnimation
 import ru.mykvm.ui.model.TileType
+import ru.mykvm.ui.utils.coerceAtAbs
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
-fun TestMap(initialTeamClasses: List<HeroClass>) {
+fun TestMap(initialTeamClasses: List<HeroType>) {
     require(initialTeamClasses.size == 3) { "В команде должно быть ровно 3 персонажа!" }
 
     val coroutineScope = rememberCoroutineScope()
@@ -52,8 +56,16 @@ fun TestMap(initialTeamClasses: List<HeroClass>) {
     // 1. Инициализируем состояние всей тройки (спавним их, например, на соседних клетках: 1, 2, 3)
     val team = remember {
         initialTeamClasses.mapIndexed { index, heroClass ->
-            HeroState(heroClass = heroClass, startX = index + 1)
+            HeroState(heroType = heroClass, startX = index + 1)
         }
+    }
+
+    val enemies = remember {
+        listOf(
+            EnemyState(EnemyType.STORMTROOPER, startX = 6),
+            EnemyState(EnemyType.ROBOT, startX = 12),
+            EnemyState(EnemyType.PATROL, startX = 15)
+        )
     }
 
     // 2. Индекс персонажа, которым мы управляем в данный момент
@@ -65,7 +77,8 @@ fun TestMap(initialTeamClasses: List<HeroClass>) {
     var isRightPressed by remember { mutableStateOf(false) }
 
     // Текстуры
-    val textures = LevelTextures.rememberTextures()
+    val textures = LevelTextures.rememberTextures(enemiesInLevel = listOf(EnemyType.STORMTROOPER,
+        EnemyType.ROBOT, EnemyType.PATROL))
     val repeatableBrush = remember(textures.levelScene) {
         ShaderBrush(ImageShader(image = textures.levelScene, tileModeX = TileMode.Repeated, tileModeY = TileMode.Clamp))
     }
@@ -94,6 +107,142 @@ fun TestMap(initialTeamClasses: List<HeroClass>) {
                     if (hero.stamina == 1 && hero.currentAnim == CharacterAnimation.WALK && !hero.isMoving) {
                         hero.currentAnim = CharacterAnimation.IDLE
                     }
+                }
+            }
+        }
+    }
+
+// ЖЕЛЕЗОБЕТОННЫЙ ИСПРАВЛЕННЫЙ ИИ-КОНТРОЛЛЕР В TESTMAP
+    var lastAiTickTime by remember { mutableStateOf(0L) }
+
+    LaunchedEffect(gameTimeMillis) {
+        // Каждые 1500 мс (1.5 секунды) запускаем логику ИИ
+        if (gameTimeMillis - lastAiTickTime >= 1500L) {
+            lastAiTickTime = gameTimeMillis
+
+            if (activeHero.isFalling) return@LaunchedEffect
+
+            enemies.forEach { enemy ->
+                if (enemy.health <= 0) return@forEach
+
+                // 1. Пропускаем такт, если враг в ступоре/щите
+                if (enemy.aiStunDurationMillis > 0) {
+                    enemy.aiStunDurationMillis = (enemy.aiStunDurationMillis - 1500L).coerceAtLeast(0L)
+                    if (enemy.aiStunDurationMillis == 0L) {
+                        enemy.currentAnim = EnemyAnimation.IDLE
+                        enemy.animationStartTime = gameTimeMillis
+                    }
+                    return@forEach
+                }
+
+                // 2. Сброс не зацикленных анимаций
+                val currentElapsed = gameTimeMillis - enemy.animationStartTime
+                if (!enemy.currentConfig.loop && currentElapsed >= enemy.currentConfig.durationMillis) {
+                    enemy.currentAnim = EnemyAnimation.IDLE
+                    enemy.animationStartTime = gameTimeMillis
+                }
+
+                // Расчеты дистанции и направления до игрока
+                val distanceToPlayer = kotlin.math.abs(activeHero.playerX - enemy.x)
+                val directionToPlayer = if (activeHero.playerX < enemy.x) -1 else 1
+
+                // 🔥 ВЫЧИСЛЯЕМ МАКСИМАЛЬНЫЙ РАДИУС АТАКИ ВРАГА
+                val maxEnemyAttackDistance = if (enemy.enemyType.isRangeAttack) 2 else 1
+
+                // ========================================================
+                // РЕЖИМ 1: АТАКА (Игрок находится в радиусе поражения оружия)
+                // ========================================================
+                if (distanceToPlayer <= maxEnemyAttackDistance) {
+                    // Разворачиваем врага лицом к игроку перед ударом/выстрелом
+                    enemy.isLeft = directionToPlayer < 0
+                    enemy.currentAnim = EnemyAnimation.ATTACK
+                    enemy.animationStartTime = gameTimeMillis
+
+                    // Наносим урон герою, только если он твердо стоит на земле (не в прыжке)
+                    if (activeHero.jumpOffsetY.value == 0f && !activeHero.isFalling) {
+                        activeHero.health = (activeHero.health - 1).coerceAtLeast(0)
+
+                        if (activeHero.health <= 0) {
+                            activeHero.health = 5
+                            activeHero.stamina = 10
+                            activeHero.playerX = 1
+                        }
+                    }
+                    return@forEach // Завершаем ход врага, он уже атаковал
+                }
+
+                // ========================================================
+                // РЕЖИМ 2: ПРЕСЛЕДОВАНИЕ/СБЛИЖЕНИЕ
+                // ========================================================
+                // Враг идет к игроку, только если тот находится ДАЛЬШЕ его радиуса атаки,
+                // но в зоне видимости (например, до 4 клеток)
+                if (distanceToPlayer in (maxEnemyAttackDistance + 1)..4) {
+                    val nextX = enemy.x + directionToPlayer
+                    val targetTile = gameMap.getOrNull(0)?.getOrNull(nextX)
+
+                    if (targetTile != null && targetTile.isWalkable) {
+                        enemy.isLeft = directionToPlayer < 0
+                        enemy.currentAnim = EnemyAnimation.WALK
+                        enemy.animationStartTime = gameTimeMillis
+                        enemy.x = nextX
+                    }
+                    return@forEach
+                }
+
+                // ========================================================
+                // РЕЖИМ 3: САМОСТОЯТЕЛЬНОЕ ПАТРУЛИРОВАНИЕ (Игрок слишком далеко)
+                // ========================================================
+                val randomChoice = (0..2).random()
+
+                if (randomChoice == 0) {
+                    if (enemy.currentAnim == EnemyAnimation.WALK) {
+                        enemy.currentAnim = EnemyAnimation.IDLE
+                        enemy.animationStartTime = gameTimeMillis
+                    }
+                } else {
+                    val patrolDirection = if (randomChoice == 1) -1 else 1
+                    val nextX = enemy.x + patrolDirection
+
+                    val isInsidePatrolZone = kotlin.math.abs(nextX - enemy.spawnX) <= enemy.patrolRadius
+                    val targetTile = gameMap.getOrNull(0)?.getOrNull(nextX)
+
+                    if (isInsidePatrolZone && targetTile != null && targetTile.isWalkable) {
+                        enemy.isLeft = patrolDirection < 0
+                        enemy.currentAnim = EnemyAnimation.WALK
+                        enemy.animationStartTime = gameTimeMillis
+                        enemy.x = nextX
+                    } else {
+                        enemy.isLeft = !enemy.isLeft
+                        enemy.currentAnim = EnemyAnimation.IDLE
+                        enemy.animationStartTime = gameTimeMillis
+                    }
+                }
+            }
+        }
+    }
+
+    // ЕДИНЫЙ КОНТРОЛЛЕР СБРОСА И СИНХРОНИЗАЦИИ АНИМАЦИЙ ВРАГОВ
+    LaunchedEffect(gameTimeMillis) {
+        enemies.forEach { enemy ->
+            if (enemy.health <= 0) return@forEach
+
+            // Если враг занят какой-то временной анимацией (не IDLE)
+            if (enemy.currentAnim != EnemyAnimation.IDLE) {
+                val config = enemy.currentConfig
+                val elapsed = gameTimeMillis - enemy.animationStartTime
+
+                // 1. Для ХОДЬБЫ (WALK) — гасим анимацию ног через 400 мс, чтобы они не скользили
+                if (enemy.currentAnim == EnemyAnimation.WALK) {
+                    if (elapsed >= 400L) {
+                        enemy.currentAnim = EnemyAnimation.IDLE
+                        enemy.animationStartTime = gameTimeMillis
+                    }
+                }
+                // 2. Для ВСЕХ ОСТАЛЬНЫХ незацикленных анимаций (ATTACK, HURT, SPECIAL/Щит)
+                // Возвращаем в IDLE строго тогда, когда спрайт-лист полностью проигрался по времени
+                else if (!config.loop && elapsed >= config.durationMillis) {
+                    enemy.currentAnim = EnemyAnimation.IDLE
+                    enemy.animationStartTime = gameTimeMillis
                 }
             }
         }
@@ -161,23 +310,17 @@ fun TestMap(initialTeamClasses: List<HeroClass>) {
 
     // Игровой цикл перемещения АКТИВНОГО персонажа
     LaunchedEffect(isLeftPressed, isRightPressed, activeHero.isMoving, activeHero.stamina, activeHero.currentAnim) {
-        // 1. Если ни одна кнопка не нажата — выходим
         if (!isLeftPressed && !isRightPressed) return@LaunchedEffect
 
-        // 2. Запоминаем направление, в которое хотел пойти игрок
         val dX = when {
             isLeftPressed -> -1
             isRightPressed -> 1
             else -> null
         }
 
-        // 3. КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Мгновенно гасим флаги одиночного тапа!
-        // Теперь они гарантированно сбросятся в false, даже если у героя 0 стамины
-        // или он занят другой анимацией.
         isLeftPressed = false
         isRightPressed = false
 
-        // 4. Только ТЕПЕРЬ проверяем, может ли персонаж физически сделать шаг
         if (activeHero.isMoving || activeHero.isFalling || activeHero.stamina <= 0 || activeHero.currentAnim == CharacterAnimation.ATTACK) return@LaunchedEffect
 
         if (dX != null) {
@@ -186,12 +329,17 @@ fun TestMap(initialTeamClasses: List<HeroClass>) {
 
             if (newX in 0 until MAP_COLUMNS) {
                 val targetTile = gameMap[activeHero.playerY][newX]
-                if (targetTile.isWalkable || targetTile == TileType.EMPTY) {
+
+                // 🔥 НОВАЯ ПРОВЕРКА: Ищем, стоит ли на целевой плитке newX живой враг
+                val isTileOccupiedByEnemy = enemies.any { it.x == newX && it.health > 0 }
+
+                // Герой делает шаг, только если тайл проходим (или бездна) И клетка НЕ занята врагом
+                if ((targetTile.isWalkable || targetTile == TileType.EMPTY) && !isTileOccupiedByEnemy) {
                     activeHero.stamina -= 1
                     activeHero.moveDuration = 300
                     activeHero.currentAnim = CharacterAnimation.WALK
                     activeHero.playerX = newX
-                    activeHero.isMoving = true // Запуск анимации animateOffsetAsState
+                    activeHero.isMoving = true
                     activeHero.animationStartTime = gameTimeMillis
                 }
             }
@@ -233,7 +381,8 @@ fun TestMap(initialTeamClasses: List<HeroClass>) {
                 .fillMaxWidth()
                 .height((TILE_DISPLAY_SIZE * 3.5f).dp)
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 180.dp) // Чуть приподняли, чтобы нижний геймпад его не перекрывал
+                .padding(bottom = 180.dp),
+            enemies = enemies
         )
         val isInputAllowed = activeHero.currentAnim == CharacterAnimation.IDLE
         // 2. ВЕРХНЯЯ ПАНЕЛЬ: Аватарки персонажей для переключения
@@ -268,11 +417,40 @@ fun TestMap(initialTeamClasses: List<HeroClass>) {
             onLeftClick = { isLeftPressed = true },
             onRightClick = { isRightPressed = true },
             onAttackClick = {
-                // Дополнительная проверка прямо в лямбде для безопасности
                 if (isInputAllowed && activeHero.stamina > 0) {
                     activeHero.stamina -= 1
                     activeHero.currentAnim = CharacterAnimation.ATTACK
                     activeHero.animationStartTime = gameTimeMillis
+
+                    val attackDirection = if (activeHero.isLeft) -1 else 1
+                    val maxAttackDistance = if (activeHero.heroType.isRangeAttack) 2 else 1
+
+                    // Ищем живого врага на линии атаки
+                    val hitEnemy = enemies.find { enemy ->
+                        val distanceX = (enemy.x - activeHero.playerX) * attackDirection
+                        enemy.health > 0 && distanceX in 1..maxAttackDistance
+                    }
+
+                    if (hitEnemy != null) {
+                        // 🔥 ПРОВЕРКА НА УЯЗВИМОСТЬ БОССА
+                        val isVulnerable = hitEnemy.enemyType.vulnerableTo == null ||
+                                hitEnemy.enemyType.vulnerableTo.contains(activeHero.heroType)
+
+                        if (isVulnerable) {
+                            // ВАРИАНТ А: Герой подходит! Наносим урон и включаем HURT
+                            hitEnemy.health -= 1
+                            hitEnemy.currentAnim = EnemyAnimation.HURT
+                            hitEnemy.animationStartTime = gameTimeMillis
+                            hitEnemy.aiStunDurationMillis = 1000L // Стан от боли чуть меньше, например 1 сек
+                        } else {
+                            // ВАРИАНТ Б: Иммунитет! Босс включает ЩИТ (SPECIAL) и блокирует урон
+                            hitEnemy.currentAnim = EnemyAnimation.SPECIAL
+                            hitEnemy.animationStartTime = gameTimeMillis
+                            // Оглушаем ИИ босса на время действия щита (например, 1.5 сек),
+                            // чтобы он не бил в ответ, пока удерживает блок
+                            hitEnemy.aiStunDurationMillis = 1500L
+                        }
+                    }
                 }
             },
             onJumpClick = {
@@ -285,11 +463,15 @@ fun TestMap(initialTeamClasses: List<HeroClass>) {
                     val currentTile = gameMap[activeHero.playerY][activeHero.playerX]
                     val isStandingOnSafeGround = currentTile != TileType.EMPTY
 
+                    // 🔥 НОВАЯ ПРОВЕРКА ДЛЯ ПРЫЖКА: Проверяем, чтобы на целевой клетке (targetX) не было врага
+                    val isTargetTileFree = enemies.none { it.x == targetX && it.health > 0 }
+
                     val canJump = isInsideMap && isStandingOnSafeGround &&
                             gameMap[activeHero.playerY][targetX] != TileType.WALL_START &&
                             gameMap[activeHero.playerY][nextX] != TileType.WALL_START &&
                             gameMap[activeHero.playerY][targetX] != TileType.WALL_END &&
-                            gameMap[activeHero.playerY][nextX] != TileType.WALL_END
+                            gameMap[activeHero.playerY][nextX] != TileType.WALL_END &&
+                            isTargetTileFree // Прыгаем, только если там пусто!
 
                     if (canJump) {
                         activeHero.stamina -= 1

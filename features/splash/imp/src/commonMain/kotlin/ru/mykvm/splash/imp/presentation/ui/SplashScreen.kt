@@ -7,7 +7,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
 import ru.mykvm.splash.imp.presentation.viewmodel.SplashScreenViewModel
-import ru.mykvm.ui.hero.HeroClass
+import ru.mykvm.ui.hero.HeroType
 import ru.mykvm.ui.levels.TestMap
 
 @Composable
@@ -28,7 +28,7 @@ fun SplashScreen(viewModel: SplashScreenViewModel = koinViewModel(), onNavigateT
         }
 
         SplashScreenViewState.Loading-> {
-            TestMap(initialTeamClasses = listOf(HeroClass.MECHANIC, HeroClass.BOY, HeroClass.GIRL))
+            TestMap(initialTeamClasses = listOf(HeroType.HUNTSMAN, HeroType.BOY_SLINGSHOT, HeroType.SHAMAN))
 
 //            Box(
 //                modifier = Modifier
