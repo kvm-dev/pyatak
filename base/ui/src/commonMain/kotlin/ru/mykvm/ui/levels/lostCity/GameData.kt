@@ -13,13 +13,22 @@ import androidx.compose.ui.graphics.ImageBitmap
 
 // Статичная карта игрового мира
 val gameMap: List<List<TileType>> = listOf(
-    listOf(2, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 3)
+    // Индексы плит: 0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21
+    // Было:        listOf(2, 1, 1, 1, 1, 4, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 3)
+    // Стало (Добавили тайл Охотника '6' на 5-ю клетку и тайл Доктора '5' на 8-ю клетку):
+    listOf(2, 1, 1, 1, 1, 6, 1, 1, 5, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 3)
 ).map { row ->
     row.map { id ->
         when (id) {
             1 -> TileType.GRASS
             2 -> TileType.WALL_START
             3 -> TileType.WALL_END
+            4 -> TileType.HUMAN_TILE
+            5 -> TileType.DOCTOR_TILE
+            6 -> TileType.HUNTSMAN_TILE
+            7 -> TileType.MECHANIC_TILE
+            8 -> TileType.MINER_TILE
+            9 -> TileType.SHAMAN_TILE
             else -> TileType.EMPTY
         }
     }
@@ -57,6 +66,12 @@ class LevelTextures(
     val surface: ImageBitmap,
     val wallStart: ImageBitmap,
     val wallEnd: ImageBitmap,
+    val minerTile: ImageBitmap,
+    val huntsmanTile: ImageBitmap,
+    val mechanicTile: ImageBitmap,
+    val doctorTile: ImageBitmap,
+    val humanTile: ImageBitmap,
+    val shamanTile: ImageBitmap,
     val empty: ImageBitmap,
     val sky: ImageBitmap,
     val levelScene: ImageBitmap,
@@ -83,13 +98,21 @@ class LevelTextures(
 
             // 3. Загружаем стандартное окружение и возвращаем готовый класс
             return LevelTextures(
-                surface = imageResource(TileType.GRASS.drawableRes!!),
-                wallStart = imageResource(TileType.WALL_START.drawableRes!!),
-                wallEnd = imageResource(TileType.WALL_END.drawableRes!!),
-                empty = imageResource(TileType.EMPTY.drawableRes!!),
-                sky = imageResource(Res.drawable.blueSky),
-                levelScene = imageResource(Res.drawable.lostCityBackground),
-                enemyBitmaps = cachedEnemies
+                    surface = imageResource(TileType.GRASS.drawableRes!!),
+            wallStart = imageResource(TileType.WALL_START.drawableRes!!),
+            wallEnd = imageResource(TileType.WALL_END.drawableRes!!),
+
+            // 🔥 ИСПРАВЛЕНО: Теперь каждый тайл грузит СВОЮ собственную картинку из Enum
+            huntsmanTile = imageResource(TileType.HUNTSMAN_TILE.drawableRes!!),
+            humanTile = imageResource(TileType.HUMAN_TILE.drawableRes!!),
+            minerTile = imageResource(TileType.MINER_TILE.drawableRes!!),
+            mechanicTile = imageResource(TileType.MECHANIC_TILE.drawableRes!!),
+            doctorTile = imageResource(TileType.DOCTOR_TILE.drawableRes!!),
+            shamanTile = imageResource(TileType.SHAMAN_TILE.drawableRes!!),
+            empty = imageResource(TileType.EMPTY.drawableRes!!),
+            sky = imageResource(Res.drawable.blueSky),
+            levelScene = imageResource(Res.drawable.lostCityBackground),
+            enemyBitmaps = cachedEnemies
             )
         }
     }

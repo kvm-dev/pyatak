@@ -28,8 +28,36 @@ fun SplashScreen(viewModel: SplashScreenViewModel = koinViewModel(), onNavigateT
         }
 
         SplashScreenViewState.Loading-> {
-            TestMap(initialTeamClasses = listOf(HeroType.HUNTSMAN, HeroType.BOY_LIGHTSABER, HeroType.DOCTOR), onGameOver = {})
+            TestMap(
+                initialTeamClasses = listOf(
+                    HeroType.HUNTSMAN,
+                    HeroType.BOY_LIGHTSABER,
+                    HeroType.DOCTOR
+                ),
+                onGameOver = {
+                    // 💀 Сработает, если вся тройка погибла
+                    println("Игра Окончена: команда полностью разбита!")
+                    // Здесь можно открыть экран поражения или сделать рестарт
+                },
+                onLevelComplete = { resources, deadHeroes ->
+                    // 🎉 Сработает, когда на карте не осталось живых врагов
+                    println("Уровень успешно завершен!")
 
+                    // Пример обработки собранных ресурсов:
+                    resources.forEach { (resourceType, count) ->
+                        println("Добыто ресурса ${resourceType.name}: $count шт.")
+                    }
+
+                    // Пример обработки потерь:
+                    if (deadHeroes.isEmpty()) {
+                        println("Идеально! Вся команда выжила.")
+                    } else {
+                        println("Потери в бою: погибшие классы -> ${deadHeroes.joinToString { it.displayName }}")
+                    }
+
+                    // Здесь можно начислить награды в профиль и загрузить следующую карту
+                }
+            )
 //            Box(
 //                modifier = Modifier
 //                    .fillMaxHeight()

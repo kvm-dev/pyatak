@@ -7,14 +7,21 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.border
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -27,7 +34,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import ru.mykvm.ui.control.BottomGamePad
 import ru.mykvm.ui.control.TopHeroSelector
@@ -42,17 +51,19 @@ import ru.mykvm.ui.levels.lostCity.TILE_DISPLAY_SIZE
 import ru.mykvm.ui.levels.lostCity.gameMap
 import ru.mykvm.ui.model.CharacterAnimation
 import ru.mykvm.ui.model.EnemyAnimation
+import ru.mykvm.ui.model.ResourceType
 import ru.mykvm.ui.model.TileType
 import ru.mykvm.ui.utils.coerceAtAbs
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
-fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
+fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelComplete: (resources: Map<ResourceType, Int>, deadHeroes: List<HeroType>) -> Unit) {
     require(initialTeamClasses.size == 3) { "В команде должно быть ровно 3 персонажа!" }
 
     val coroutineScope = rememberCoroutineScope()
-
+    val gatheredResources = remember { mutableStateMapOf<ResourceType, Int>() }
+    val depletedTiles = remember { mutableStateOf(setOf<Pair<Int, Int>>()) }
     // 1. Инициализируем состояние всей тройки (спавним их, например, на соседних клетках: 1, 2, 3)
     val team = remember {
         initialTeamClasses.mapIndexed { index, heroClass ->
@@ -73,22 +84,33 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
     val activeHero = team[activeHeroIndex]
 
 
-
     // Флаги команд для активного героя
     var isLeftPressed by remember { mutableStateOf(false) }
     var isRightPressed by remember { mutableStateOf(false) }
 
     // Текстуры
-    val textures = LevelTextures.rememberTextures(enemiesInLevel = listOf(EnemyType.PATROL,
-        EnemyType.ROBOT, EnemyType.BOSS_LORD_HREWNDEL))
+    val textures = LevelTextures.rememberTextures(
+        enemiesInLevel = listOf(
+            EnemyType.PATROL,
+            EnemyType.ROBOT, EnemyType.BOSS_LORD_HREWNDEL
+        )
+    )
     val repeatableBrush = remember(textures.levelScene) {
-        ShaderBrush(ImageShader(image = textures.levelScene, tileModeX = TileMode.Repeated, tileModeY = TileMode.Clamp))
+        ShaderBrush(
+            ImageShader(
+                image = textures.levelScene,
+                tileModeX = TileMode.Repeated,
+                tileModeY = TileMode.Clamp
+            )
+        )
     }
 
     // Стабильный игровой таймер кадров (один на всю игру)
     var gameTimeMillis by remember { mutableStateOf(0L) }
     LaunchedEffect(Unit) {
-        while (true) { withFrameMillis { _ -> gameTimeMillis += 16L } }
+        while (true) {
+            withFrameMillis { _ -> gameTimeMillis += 16L }
+        }
     }
 
     // Железобетонный таймер стамины для ВСЕХ персонажей в команде
@@ -99,7 +121,8 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
             team.forEach { hero ->
                 // Условие покоя стало намного проще и надежнее:
                 // Персонаж отдыхает, если он не летит в воздухе, не падает в бездну и игрок не держит кнопки шага
-                val isActuallyResting = hero.jumpOffsetY.value == 0f && !hero.isFalling && !isLeftPressed && !isRightPressed
+                val isActuallyResting =
+                    hero.jumpOffsetY.value == 0f && !hero.isFalling && !isLeftPressed && !isRightPressed
 
                 if (isActuallyResting && hero.stamina < 10) {
                     hero.stamina += 2
@@ -140,7 +163,8 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
 
                 // 1. Пропускаем такт, если враг в ступоре/щите
                 if (enemy.aiStunDurationMillis > 0) {
-                    enemy.aiStunDurationMillis = (enemy.aiStunDurationMillis - 1500L).coerceAtLeast(0L)
+                    enemy.aiStunDurationMillis =
+                        (enemy.aiStunDurationMillis - 1500L).coerceAtLeast(0L)
                     if (enemy.aiStunDurationMillis == 0L) {
                         enemy.currentAnim = EnemyAnimation.IDLE
                         enemy.animationStartTime = gameTimeMillis
@@ -168,7 +192,10 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
                 if (distanceToPlayer <= maxEnemyAttackDistance) {
                     enemy.isLeft = directionToPlayer < 0
 
-                    if (enemy.isBossSecondPhase && enemy.enemyType.animations.containsKey(EnemyAnimation.SPECIAL_ATTACK)) {
+                    if (enemy.isBossSecondPhase && enemy.enemyType.animations.containsKey(
+                            EnemyAnimation.SPECIAL_ATTACK
+                        )
+                    ) {
                         enemy.currentAnim = EnemyAnimation.SPECIAL_ATTACK
                     } else {
                         enemy.currentAnim = EnemyAnimation.ATTACK
@@ -203,7 +230,8 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
                 val targetJumpX = enemy.x + (jumpDirection * 2)
 
                 // Проверяем, умеет ли данный тип врага вообще прыгать (задан ли JUMP в enum)
-                val canThisEnemyTypeJump = enemy.enemyType.animations.containsKey(EnemyAnimation.JUMP)
+                val canThisEnemyTypeJump =
+                    enemy.enemyType.animations.containsKey(EnemyAnimation.JUMP)
 
                 if (canThisEnemyTypeJump && distanceToPlayer >= 2) {
                     val nextTile = gameMap.getOrNull(0)?.getOrNull(nextTileX)
@@ -215,7 +243,8 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
 
                     if (isGapInFront && isLandingSafe) {
                         // 🔥 ПРОВЕРКА: Занята ли целевая клетка targetJumpX кем-то из ЖИВЫХ героев команды
-                        val isTileOccupiedByHero = team.any { hero -> hero.playerX == targetJumpX && hero.health > 0 }
+                        val isTileOccupiedByHero =
+                            team.any { hero -> hero.playerX == targetJumpX && hero.health > 0 }
 
                         if (!isTileOccupiedByHero) {
                             // Все условия сошлись! Запускаем процесс прыжка
@@ -269,7 +298,8 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
                     val patrolDirection = if (randomChoice == 1) -1 else 1
                     val nextX = enemy.x + patrolDirection
 
-                    val isInsidePatrolZone = kotlin.math.abs(nextX - enemy.spawnX) <= enemy.patrolRadius
+                    val isInsidePatrolZone =
+                        kotlin.math.abs(nextX - enemy.spawnX) <= enemy.patrolRadius
                     val targetTile = gameMap.getOrNull(0)?.getOrNull(nextX)
 
                     if (isInsidePatrolZone && targetTile != null && targetTile.isWalkable) {
@@ -341,7 +371,10 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
             activeHero.health = (activeHero.health - 1).coerceAtLeast(0)
 
             coroutineScope.launch {
-                activeHero.jumpOffsetY.animateTo(TILE_DISPLAY_SIZE * 1.5f, tween(250, easing = FastOutLinearInEasing))
+                activeHero.jumpOffsetY.animateTo(
+                    TILE_DISPLAY_SIZE * 1.5f,
+                    tween(250, easing = FastOutLinearInEasing)
+                )
 
                 // 🔥 НОВАЯ ЛОГИКА СМЕРТИ ОТ ПАДЕНИЯ
                 if (activeHero.health <= 0) {
@@ -357,15 +390,6 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
         }
     }
 
-    // Сброс атаки активного героя
-    LaunchedEffect(activeHero.currentAnim) {
-        if (activeHero.currentAnim == CharacterAnimation.ATTACK) {
-            kotlinx.coroutines.delay(activeHero.currentConfig.durationMillis.toLong().milliseconds)
-            isLeftPressed = false
-            isRightPressed = false
-            activeHero.currentAnim = CharacterAnimation.IDLE
-        }
-    }
 
     // Расчет текущего кадра для АКТИВНОГО персонажа
     val currentFrame = remember(activeHero.currentAnim, gameTimeMillis) {
@@ -381,7 +405,13 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
     }
 
     // Игровой цикл перемещения АКТИВНОГО персонажа
-    LaunchedEffect(isLeftPressed, isRightPressed, activeHero.isMoving, activeHero.stamina, activeHero.currentAnim) {
+    LaunchedEffect(
+        isLeftPressed,
+        isRightPressed,
+        activeHero.isMoving,
+        activeHero.stamina,
+        activeHero.currentAnim
+    ) {
         if (!isLeftPressed && !isRightPressed) return@LaunchedEffect
 
         val dX = when {
@@ -418,19 +448,52 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
         }
     }
 
+    // Контроль завершения уровня при гибели ВСЕХ врагов
+    LaunchedEffect(enemies.map { it.health }) {
+        val allEnemiesDead = enemies.all { it.health <= 0 }
+        if (allEnemiesDead && enemies.isNotEmpty()) {
+            // Собираем список типов героев, у которых здоровье <= 0
+            val deadHeroesList = team.filter { it.health <= 0 }.map { it.heroType }
+
+            // Вызываем внешний метод завершения уровня
+            onLevelComplete(gatheredResources.toMap(), deadHeroesList)
+        }
+    }
+
+    // 🔥 ЕДИНЫЙ ЖЕЛЕЗОБЕТОННЫЙ КОНТРОЛЛЕР СБРОСА (Атака, Сбор, Отказ)
+    LaunchedEffect(activeHero.currentAnim) {
+        val current = activeHero.currentAnim
+
+        if (current == CharacterAnimation.ATTACK ||
+            current == CharacterAnimation.EXTRACT ||
+            current == CharacterAnimation.REFUSE) {
+
+            // Берем точную длительность проигранного спрайт-листа из конфигурации
+            val duration = activeHero.currentConfig.durationMillis.toLong()
+            kotlinx.coroutines.delay(duration)
+
+            // Мгновенно возвращаем персонажа в строй и сбрасываем таймер для плавной анимации покоя
+            activeHero.currentAnim = CharacterAnimation.IDLE
+            activeHero.animationStartTime = gameTimeMillis
+        }
+    }
+
     // Плавная интерполяция перемещения для АКТИВНОГО героя
     // (Для неактивных героев можно сделать аналогичные animateOffset,
     // но главное — камера будет следовать за ТЕКУЩИМ анимированным X)
     val cameraOffsetX by animateOffsetAsState(
         targetValue = Offset(activeHero.playerX * TILE_DISPLAY_SIZE, 0f),
-        // Использует moveDuration, который равен 300мс для шага и 350мс для прыжка
         animationSpec = tween(durationMillis = activeHero.moveDuration, easing = LinearEasing),
         finishedListener = {
             // Сбрасываем флаг движения, как только персонаж физически прибыл в целевую плитку
             activeHero.isMoving = false
 
-            // Возвращаем персонажа в состояние покоя, если он не занят атакой
-            if (activeHero.currentAnim != CharacterAnimation.ATTACK) {
+            // 🔥 ИСПРАВЛЕНИЕ: Возвращаем в IDLE, только если герой НЕ занят атакой или сбором ресурсов!
+            val isBusyWithSpecialAnim = activeHero.currentAnim == CharacterAnimation.ATTACK ||
+                    activeHero.currentAnim == CharacterAnimation.EXTRACT ||
+                    activeHero.currentAnim == CharacterAnimation.REFUSE
+
+            if (!isBusyWithSpecialAnim) {
                 activeHero.currentAnim = CharacterAnimation.IDLE
                 activeHero.animationStartTime = gameTimeMillis // Сбрасываем таймер для плавной анимации покоя
             }
@@ -449,11 +512,12 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
             gameTimeMillis = gameTimeMillis,
             textures = textures,
             repeatableBrush = repeatableBrush,
+            deletedTiles = depletedTiles.value, // 🔥 НОВЫЙ ПАРАМЕТР
             modifier = Modifier
                 .fillMaxWidth()
                 .height((TILE_DISPLAY_SIZE * 3.5f).dp)
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 180.dp),
+                .padding(bottom = 200.dp),
             enemies = enemies
         )
         val isInputAllowed = activeHero.currentAnim == CharacterAnimation.IDLE
@@ -475,125 +539,196 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit) {
                 .padding(top = 24.dp)
         )
 
-        // 3. НИЖНЯЯ ПАНЕЛЬ: Геймпад и статус текущего героя
-        val controlsEnabled = !activeHero.isFalling && activeHero.stamina > 0
+        // ========================================================
+        // 3. НИЖНЯЯ ПАНЕЛЬ: Статус текущего героя и Геймпад
+        // ========================================================
 
-                && !activeHero.isMoving
-                && activeHero.jumpOffsetY.value == 0f
-                && !activeHero.isFalling
-        BottomGamePad(
-            activeHero = activeHero,
-            // Теперь кнопки заблокируются, если персонаж делает ХОТЬ ЧТО-ТО
-            controlsEnabled = isInputAllowed && activeHero.stamina > 0,
-            staminaAvailable = activeHero.stamina > 0,
-            onLeftClick = { isLeftPressed = true },
-            onRightClick = { isRightPressed = true },
-            onAttackClick = {
-                if (isInputAllowed && activeHero.stamina > 0) {
-                    activeHero.stamina -= 1
-                    activeHero.currentAnim = CharacterAnimation.ATTACK
-                    activeHero.animationStartTime = gameTimeMillis
+        // 🔥 НАДЕЖНЫЙ ОПРЕДЕЛИТЕЛЬ РЕСУРСНОГО ТАЙЛА
+        val currentTile = gameMap.getOrNull(activeHero.playerY)?.getOrNull(activeHero.playerX) ?: TileType.EMPTY
+        val isResourceTile = currentTile.requiredResource != null
 
-                    val attackDirection = if (activeHero.isLeft) -1 else 1
-                    val maxAttackDistance = if (activeHero.heroType.isRangeAttack) 2 else 1
+        Box(
+            modifier = Modifier.fillMaxSize().background(Color(0xFF1A1A1A))
+        ) {
+            // 1. ИГРОВОЙ ЭКРАН (Canvas)
+            GameViewport(
+                cameraOffsetX = cameraOffsetX.x,
+                activeHero = activeHero,
+                team = team,
+                currentFrame = currentFrame,
+                gameTimeMillis = gameTimeMillis,
+                textures = textures,
+                repeatableBrush = repeatableBrush,
+                deletedTiles = depletedTiles.value, // 🔥 ВОТ ЭТА СТРОКА ИСПРАВИТ ОШИБКУ КОМПИЛЯЦИИ
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height((TILE_DISPLAY_SIZE * 3.5f).dp)
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 200.dp),
+                enemies = enemies
+            )
 
-                    val hitEnemy = enemies.find { enemy ->
-                        val distanceX = (enemy.x - activeHero.playerX) * attackDirection
-                        // 🔥 ВАЖНО: Босс в анимации RESURRECT неуязвим, поэтому проверяем, что он не воскрешается прямо сейчас
-                        enemy.health > 0 && distanceX in 1..maxAttackDistance && enemy.currentAnim != EnemyAnimation.RESURRECT
+            val isInputAllowed = activeHero.currentAnim == CharacterAnimation.IDLE
+
+            // 2. ВЕРХНЯЯ ПАНЕЛЬ: Аватарки персонажей
+            TopHeroSelector(
+                team = team,
+                activeHeroIndex = activeHeroIndex,
+                onHeroSelected = { index ->
+                    if (index != activeHeroIndex && isInputAllowed) {
+                        isLeftPressed = false
+                        isRightPressed = false
+                        activeHeroIndex = index
+                        team[index].animationStartTime = gameTimeMillis
                     }
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 24.dp)
+            )
 
-                    if (hitEnemy != null) {
-                        val isVulnerable = hitEnemy.enemyType.vulnerableTo == null ||
-                                hitEnemy.enemyType.vulnerableTo.contains(activeHero.heroType)
+            // 3. 🔥 НИЖНЯЯ ПАНЕЛЬ В РАМОЧКЕ: Всё сгруппировано в один красивый узел
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .background(Color(0xEE121212), shape = RoundedCornerShape(24.dp))
+                    .border(
+                        width = 2.dp,
+                        color = Color(0xFF444444),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+                    .padding(16.dp)
+            ) {
+                val rawTile = gameMap.getOrNull(activeHero.playerY)?.getOrNull(activeHero.playerX) ?: TileType.EMPTY
+                val isTileDepleted = depletedTiles.value.contains(Pair(activeHero.playerX, activeHero.playerY))
 
-                        if (isVulnerable) {
-                            // Наносим урон
-                            val damage = 1
-                            val newHealth = hitEnemy.health - damage
+                // 🔥 Если жила истощена, для логики это теперь обычная ТРАВА
+                val currentTile = if (isTileDepleted) TileType.GRASS else rawTile
+                val isResourceTile = currentTile.requiredResource != null
 
-                            // 🔥 ПРОВЕРКА НА ВТОРОЙ ЭТАП БОССА
-                            val isFinalBoss = hitEnemy.enemyType == EnemyType.BOSS_LORD_HREWNDEL // Укажите вашего финального босса
+                // Внутри вызова BottomGamePad обновите блок onExtractClick:
+                BottomGamePad(
+                    activeHero = activeHero,
+                    controlsEnabled = (activeHero.currentAnim == CharacterAnimation.IDLE || activeHero.currentAnim == CharacterAnimation.WALK) && activeHero.health > 0 && activeHero.stamina > 0 && !activeHero.isFalling,
+                    staminaAvailable = activeHero.stamina > 0,
+                    isResourceTile = isResourceTile,
+                    onLeftClick = { isLeftPressed = true },
+                    onRightClick = { isRightPressed = true },
+                    onAttackClick = {
+                        if (isInputAllowed && activeHero.stamina > 0) {
+                            activeHero.stamina -= 1
+                            activeHero.currentAnim = CharacterAnimation.ATTACK
+                            activeHero.animationStartTime = gameTimeMillis
 
-                            if (newHealth <= 0 && isFinalBoss && !hitEnemy.hasResurrected) {
-                                // Переходим на ФАЗУ 2!
-                                hitEnemy.health = hitEnemy.enemyType.maxHealth // Полное восстановление HP
-                                hitEnemy.hasResurrected = true
-                                hitEnemy.isBossSecondPhase = true
+                            val attackDirection = if (activeHero.isLeft) -1 else 1
+                            val maxAttackDistance = if (activeHero.heroType.isRangeAttack) 2 else 1
 
-                                // Включаем анимацию воскрешения/перерождения
-                                hitEnemy.currentAnim = EnemyAnimation.RESURRECT
-                                hitEnemy.animationStartTime = gameTimeMillis
+                            val hitEnemy = enemies.find { enemy ->
+                                val distanceX = (enemy.x - activeHero.playerX) * attackDirection
+                                enemy.health > 0 && distanceX in 1..maxAttackDistance && enemy.currentAnim != EnemyAnimation.RESURRECT
+                            }
 
-                                // Оглушаем ИИ босса на длительность анимации перерождения (например, на 2 секунды)
-                                val resurrectConfig = hitEnemy.enemyType.animations[EnemyAnimation.RESURRECT]
-                                val duration = resurrectConfig?.durationMillis?.toLong() ?: 2000L
-                                hitEnemy.aiStunDurationMillis = duration
-                            } else {
-                                // Обычное получение урона мобом или окончательная смерть босса
-                                hitEnemy.health = newHealth.coerceAtLeast(0)
-                                if (hitEnemy.health > 0) {
-                                    hitEnemy.currentAnim = EnemyAnimation.HURT
+                            if (hitEnemy != null) {
+                                val isVulnerable = hitEnemy.enemyType.vulnerableTo == null ||
+                                        hitEnemy.enemyType.vulnerableTo.contains(activeHero.heroType)
+
+                                if (isVulnerable) {
+                                    val damage = 1
+                                    val newHealth = hitEnemy.health - damage
+                                    val isFinalBoss =
+                                        hitEnemy.enemyType == EnemyType.BOSS_LORD_HREWNDEL
+
+                                    if (newHealth <= 0 && isFinalBoss && !hitEnemy.hasResurrected) {
+                                        hitEnemy.health = hitEnemy.enemyType.maxHealth
+                                        hitEnemy.hasResurrected = true
+                                        hitEnemy.isBossSecondPhase = true
+                                        hitEnemy.currentAnim = EnemyAnimation.RESURRECT
+                                        hitEnemy.animationStartTime = gameTimeMillis
+
+                                        val resurrectConfig =
+                                            hitEnemy.enemyType.animations[EnemyAnimation.RESURRECT]
+                                        val duration =
+                                            resurrectConfig?.durationMillis?.toLong() ?: 2000L
+                                        hitEnemy.aiStunDurationMillis = duration
+                                    } else {
+                                        hitEnemy.health = newHealth.coerceAtLeast(0)
+                                        if (hitEnemy.health > 0) {
+                                            hitEnemy.currentAnim = EnemyAnimation.HURT
+                                            hitEnemy.animationStartTime = gameTimeMillis
+                                            hitEnemy.aiStunDurationMillis = 1000L
+                                        }
+                                    }
+                                } else {
+                                    hitEnemy.currentAnim = EnemyAnimation.SPECIAL
                                     hitEnemy.animationStartTime = gameTimeMillis
-                                    hitEnemy.aiStunDurationMillis = 1000L
+                                    hitEnemy.aiStunDurationMillis = 1500L
                                 }
                             }
+                        }
+                    },
+                    onJumpClick = {
+                        if (isInputAllowed && activeHero.stamina > 0) {
+                            val jumpDirection = if (activeHero.isLeft) -2 else 2
+                            val targetX = activeHero.playerX + jumpDirection
+                            val nextX = activeHero.playerX + (if (activeHero.isLeft) -1 else 1)
+
+                            val isInsideMap =
+                                targetX in 0 until MAP_COLUMNS && nextX in 0 until MAP_COLUMNS
+                            val currentHeroTile = gameMap[activeHero.playerY][activeHero.playerX]
+                            val isStandingOnSafeGround = currentHeroTile != TileType.EMPTY
+
+                            val isTargetTileFree = enemies.none { it.x == targetX && it.health > 0 }
+
+                            val canJump = isInsideMap && isStandingOnSafeGround &&
+                                    gameMap[activeHero.playerY][targetX] != TileType.WALL_START &&
+                                    gameMap[activeHero.playerY][nextX] != TileType.WALL_START &&
+                                    gameMap[activeHero.playerY][targetX] != TileType.WALL_END &&
+                                    gameMap[activeHero.playerY][nextX] != TileType.WALL_END &&
+                                    isTargetTileFree
+
+                            if (canJump) {
+                                activeHero.stamina -= 1
+                                activeHero.moveDuration = 350
+                                activeHero.currentAnim = CharacterAnimation.JUMP
+                                activeHero.animationStartTime = gameTimeMillis
+                                activeHero.playerX = targetX
+                                activeHero.isMoving = true
+
+                                coroutineScope.launch {
+                                    activeHero.jumpOffsetY.animateTo(
+                                        -250f,
+                                        tween(175, easing = FastOutSlowInEasing)
+                                    )
+                                    activeHero.jumpOffsetY.animateTo(
+                                        0f,
+                                        tween(175, easing = LinearOutSlowInEasing)
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    onExtractClick = {
+                        val targetRes = currentTile.requiredResource
+
+                        if (targetRes != null && activeHero.heroType.extractableResource == targetRes) {
+                            // 👍 УСПЕХ
+                            activeHero.animationStartTime = gameTimeMillis
+                            activeHero.stamina -= 1
+                            activeHero.currentAnim = CharacterAnimation.EXTRACT
+                            gatheredResources[targetRes] = (gatheredResources[targetRes] ?: 0) + 1
+
+                            // 🔥 НОВОЕ: Истощаем жилу, добавляя её координаты в набор!
+                            depletedTiles.value = depletedTiles.value + Pair(activeHero.playerX, activeHero.playerY)
                         } else {
-                            // Иммунитет / Щит (SPECIAL)
-                            hitEnemy.currentAnim = EnemyAnimation.SPECIAL
-                            hitEnemy.animationStartTime = gameTimeMillis
-                            hitEnemy.aiStunDurationMillis = 1500L
+                            // ❌ ОТКАЗ
+                            activeHero.animationStartTime = gameTimeMillis
+                            activeHero.currentAnim = CharacterAnimation.REFUSE
                         }
                     }
-                }
-            },
-            onJumpClick = {
-                if (isInputAllowed && activeHero.stamina > 0) {
-                    val jumpDirection = if (activeHero.isLeft) -2 else 2
-                    val targetX = activeHero.playerX + jumpDirection
-                    val nextX = activeHero.playerX + (if (activeHero.isLeft) -1 else 1)
-
-                    val isInsideMap = targetX in 0 until MAP_COLUMNS && nextX in 0 until MAP_COLUMNS
-                    val currentTile = gameMap[activeHero.playerY][activeHero.playerX]
-                    val isStandingOnSafeGround = currentTile != TileType.EMPTY
-
-                    // 🔥 НОВАЯ ПРОВЕРКА ДЛЯ ПРЫЖКА: Проверяем, чтобы на целевой клетке (targetX) не было врага
-                    val isTargetTileFree = enemies.none { it.x == targetX && it.health > 0 }
-
-                    val canJump = isInsideMap && isStandingOnSafeGround &&
-                            gameMap[activeHero.playerY][targetX] != TileType.WALL_START &&
-                            gameMap[activeHero.playerY][nextX] != TileType.WALL_START &&
-                            gameMap[activeHero.playerY][targetX] != TileType.WALL_END &&
-                            gameMap[activeHero.playerY][nextX] != TileType.WALL_END &&
-                            isTargetTileFree // Прыгаем, только если там пусто!
-
-                    if (canJump) {
-                        activeHero.stamina -= 1
-
-                        // Задаем время полета по горизонтали
-                        activeHero.moveDuration = 350
-
-                        // Включаем анимацию прыжка
-                        activeHero.currentAnim = CharacterAnimation.JUMP
-                        activeHero.animationStartTime = gameTimeMillis
-
-                        // Мгновенно меняем координату цели — камера плавно поедет сама через animateOffsetAsState!
-                        activeHero.playerX = targetX
-                        activeHero.isMoving = true
-
-                        // Корутина занимается ТОЛЬКО вертикальной осью Y
-                        coroutineScope.launch {
-                            // Взлет вверх (175 мс)
-                            activeHero.jumpOffsetY.animateTo(-250f, tween(175, easing = FastOutSlowInEasing))
-                            // Падение на землю (175 мс)
-                            activeHero.jumpOffsetY.animateTo(0f, tween(175, easing = LinearOutSlowInEasing))
-                        }
-                    }
-                }
-            },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(start = 16.dp, end = 16.dp, bottom = 24.dp)
-        )
+                )
+            }
+        }
     }
 }

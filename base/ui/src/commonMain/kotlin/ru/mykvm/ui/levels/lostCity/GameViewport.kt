@@ -28,12 +28,13 @@ import androidx.compose.ui.text.drawText
 
 @Composable
 fun GameViewport(
-    cameraOffsetX: Float,       // Переданный интерполированный X активного героя
-    activeHero: HeroState,      // Ссылка на текущего управляемого героя
-    team: List<HeroState>,      // Список всей тройки для их одновременной отрисовки
-    enemies: List<EnemyState>,  // Список всех врагов на уровне
-    currentFrame: Int,          // Текущий кадр активного героя из TestMap
-    gameTimeMillis: Long,       // Игровой таймер
+    deletedTiles: Set<Pair<Int, Int>>,
+    cameraOffsetX: Float,
+    activeHero: HeroState,
+    team: List<HeroState>,
+    enemies: List<EnemyState>,
+    currentFrame: Int,
+    gameTimeMillis: Long,
     textures: LevelTextures,
     repeatableBrush: Brush,
     modifier: Modifier = Modifier
@@ -97,20 +98,52 @@ fun GameViewport(
         }
 
         // ========================================================
-        // 3. СЛОЙ 3: ИГРОВАЯ КАРТА - Скорость 100%
+        // 3. СЛОЙ 3: ИГРОВАЯ КАРТА (ДВУХСЛОЙНЫЙ ТАКТИЧЕСКИЙ РЕНДЕР)
         // ========================================================
         withTransform({ translate(left = finalCameraX, top = 0f) }) {
             for (col in 0 until MAP_COLUMNS) {
-                val tile = gameMap[0][col]
+                // 🔥 ИСПРАВЛЕНИЕ: Берем конкретную плитку по строке Y и колонке X
+                val tile = gameMap.getOrNull(activeHero.playerY)?.getOrNull(col) ?: TileType.EMPTY
+
                 val tileTopLeft = Offset(col * TILE_DISPLAY_SIZE, groundY)
                 val currentTileSize = IntSize(TILE_DISPLAY_SIZE.toInt(), TILE_DISPLAY_SIZE.toInt())
 
+                // Проверяем, не истощен ли данный тайл
+                val isDepleted = deletedTiles.contains(Pair(col, activeHero.playerY))
+
                 when (tile) {
+                    // Стандартные базовые тайлы уровня
                     TileType.GRASS -> drawImage(image = textures.surface, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
                     TileType.WALL_START -> drawImage(image = textures.wallStart, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
                     TileType.WALL_END -> drawImage(image = textures.wallEnd, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
-                    TileType.EMPTY -> {
-                        drawImage(image = textures.empty, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
+                    TileType.EMPTY -> drawImage(image = textures.empty, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
+
+                    // РЕСУРСНЫЕ ТАЙЛЫ: Сначала всегда рисуем обычную траву
+                    TileType.MINER_TILE, TileType.HUNTSMAN_TILE, TileType.MECHANIC_TILE,
+                    TileType.DOCTOR_TILE, TileType.HUMAN_TILE, TileType.SHAMAN_TILE -> {
+
+                        // Слой 1: Основание земли (Трава)
+                        drawImage(image = textures.surface, dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()), dstSize = currentTileSize, filterQuality = FilterQuality.None)
+
+                        // Слой 2: Если жила еще полна, накатываем сверху слой ресурса
+                        if (!isDepleted) {
+                            val resourceOverlay = when (tile) {
+                                TileType.MINER_TILE -> textures.minerTile
+                                TileType.HUNTSMAN_TILE -> textures.huntsmanTile
+                                TileType.MECHANIC_TILE -> textures.mechanicTile
+                                TileType.DOCTOR_TILE -> textures.doctorTile
+                                TileType.HUMAN_TILE -> textures.humanTile
+                                TileType.SHAMAN_TILE -> textures.shamanTile
+                                else -> textures.empty
+                            }
+
+                            drawImage(
+                                image = resourceOverlay,
+                                dstOffset = IntOffset(tileTopLeft.x.toInt(), tileTopLeft.y.toInt()),
+                                dstSize = currentTileSize,
+                                filterQuality = FilterQuality.None
+                            )
+                        }
                     }
                 }
             }
@@ -181,12 +214,7 @@ fun GameViewport(
             // Центрируем горизонтально над спрайтом и приподнимаем на 25 пикселей вверх
             val textX = enemyDrawX + (TILE_DISPLAY_SIZE / 2f) - (textWidth / 2f)
             val textY = enemyDrawY - 25f
-
-            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Проверяем, влезает ли текст в экран целиком
-            // Левая граница текста не должна быть меньше нуля,
-            // а правая (координата + ширина) не должна выходить за пределы размера Canvas (size.width)
             val isTextFullyVisible = textX >= 0f && (textX + textWidth) <= size.width
-
             if (isTextFullyVisible) {
                 drawText(
                     textMeasurer = textMeasurer,
@@ -196,12 +224,11 @@ fun GameViewport(
                 )
             }
         }
-
-        // ========================================================
-        // 4. СЛОЙ 4: ОТРЕСОВКА ВСЕЙ КОМАНДЫ (3 ПЕРСОНАЖА)
-        // ========================================================
+// ========================================================
+// 4. СЛОЙ 4: ОТРЕСОВКА ВСЕЙ КОМАНДЫ (3 ПЕРСОНАЖА)
+// ========================================================
         team.forEach { hero ->
-            if (hero.health <= 0) return@forEach
+            if (hero.health <= 0) return@forEach // Погибших героев полностью скрываем с карты
 
             val config = hero.currentConfig
             val currentBitmap = heroBitmaps[hero.heroType] ?: return@forEach
@@ -221,13 +248,15 @@ fun GameViewport(
             val srcOffset = IntOffset(x = col * 256, y = row * 256)
             val srcSize = IntSize(width = 256, height = 256)
             val dstSize = IntSize(width = TILE_DISPLAY_SIZE.toInt(), height = TILE_DISPLAY_SIZE.toInt())
-// Рассчитываем позицию X в игровом мире
+
+            // Рассчитываем позицию X в игровом мире
             val worldX = if (hero === activeHero) {
                 cameraOffsetX
             } else {
                 hero.playerX * TILE_DISPLAY_SIZE
             }
-// Боевой выпад атаки (срабатывает, только если этот конкретный герой нажал ATK)
+
+            // Боевой выпад атаки (срабатывает, только если этот конкретного герой нажал ATK)
             val attackVisualOffset = if (hero.currentAnim == CharacterAnimation.ATTACK) {
                 val offsetProgress = if (frame <= 12) frame / 12f else (24 - frame) / 12f
                 val maxOffsetDistance = TILE_DISPLAY_SIZE * 0.5f
@@ -236,9 +265,12 @@ fun GameViewport(
             } else {
                 0f
             }
-// Итоговые экранные координаты с учетом сдвига камеры и высоты прыжка
+
+            // Итоговые экранные координаты с учетом сдвига камеры и высоты прыжка
             val playerDrawX = worldX + finalCameraX + attackVisualOffset
             val playerDrawY = groundY + hero.jumpOffsetY.value
+
+            // Отрисовка самого спрайта персонажа (Без HUD текста над головой)
             withTransform({
                 translate(left = playerDrawX, top = playerDrawY)
                 if (hero.isLeft) {
