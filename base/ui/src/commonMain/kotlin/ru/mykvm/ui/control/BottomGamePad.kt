@@ -88,21 +88,37 @@ fun BottomGamePad(
         // ========================================================
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp), // Чуть увеличили отступ для крупных сердец
             modifier = Modifier.padding(horizontal = 8.dp)
         ) {
+            // 1. Имя персонажа
             Text(
                 text = activeHero.heroType.displayName.uppercase(),
                 color = Color.White,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
             )
-            Text(
-                text = "HP: ❤️ ${activeHero.health}",
-                color = Color(0xFFFF5252),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+
+            // 2. 🔥 НОВОЕ: Отображение здоровья КРУПНЫМИ сердечками без цифр
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Если здоровья 0, выведем одно серое или разбитое сердце, чтобы шкала не пустовала совсем
+                if (activeHero.health <= 0) {
+                    Text(text = "🖤", fontSize = 22.sp)
+                } else {
+                    // Рисуем ровно столько больших сердец, сколько очков здоровья осталось
+                    repeat(activeHero.health) {
+                        Text(
+                            text = "❤️",
+                            fontSize = 22.sp // 🔥 Увеличили размер (было 14.sp для текста)
+                        )
+                    }
+                }
+            }
+
+            // 3. Выносливость персонажа
             Text(
                 text = "STM: ⚡ ${activeHero.stamina}/10",
                 color = Color(0xFFFFD740),
