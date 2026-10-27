@@ -7,17 +7,13 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.border
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,9 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import ru.mykvm.ui.control.BottomGamePad
 import ru.mykvm.ui.control.TopHeroSelector
@@ -53,8 +47,6 @@ import ru.mykvm.ui.model.CharacterAnimation
 import ru.mykvm.ui.model.EnemyAnimation
 import ru.mykvm.ui.model.ResourceType
 import ru.mykvm.ui.model.TileType
-import ru.mykvm.ui.utils.coerceAtAbs
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
@@ -605,7 +597,7 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                 val isTileDepleted = depletedTiles.value.contains(Pair(activeHero.playerX, activeHero.playerY))
 
                 // 🔥 Если жила истощена, для логики это теперь обычная ТРАВА
-                val currentTile = if (isTileDepleted) TileType.GRASS else rawTile
+                val currentTile = if (isTileDepleted) TileType.SURFACE else rawTile
                 val isResourceTile = currentTile.requiredResource != null
 
                 // Внутри вызова BottomGamePad обновите блок onExtractClick:

@@ -13,14 +13,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 
 // Статичная карта игрового мира
 val gameMap: List<List<TileType>> = listOf(
-    // Индексы плит: 0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21
-    // Было:        listOf(2, 1, 1, 1, 1, 4, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 3)
-    // Стало (Добавили тайл Охотника '6' на 5-ю клетку и тайл Доктора '5' на 8-ю клетку):
-    listOf(2, 1, 1, 1, 1, 6, 1, 1, 5, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 3)
+    listOf(2, 1, 1, 1, 1, 9, 4, 1, 5, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 3)
 ).map { row ->
     row.map { id ->
         when (id) {
-            1 -> TileType.GRASS
+            1 -> TileType.SURFACE
             2 -> TileType.WALL_START
             3 -> TileType.WALL_END
             4 -> TileType.HUMAN_TILE
@@ -98,7 +95,7 @@ class LevelTextures(
 
             // 3. Загружаем стандартное окружение и возвращаем готовый класс
             return LevelTextures(
-                    surface = imageResource(TileType.GRASS.drawableRes!!),
+                    surface = imageResource(TileType.SURFACE.drawableRes!!),
             wallStart = imageResource(TileType.WALL_START.drawableRes!!),
             wallEnd = imageResource(TileType.WALL_END.drawableRes!!),
 
