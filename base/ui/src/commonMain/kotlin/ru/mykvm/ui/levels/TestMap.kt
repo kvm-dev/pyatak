@@ -164,10 +164,46 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                         enemy.currentAnim = EnemyAnimation.IDLE
                         enemy.animationStartTime = gameTimeMillis
                     }
+                    enemy.renderOffsetX = 0f
                     return@forEach
                 }
 
-                // 2. Сброс не зацикленных анимаций
+                // ========================================================
+                // 🔥 ЖЕЛЕЗОБЕТОННЫЙ ANIMATION LOCK (ИЗОЛЯЦИЯ АТАКИ)
+                // ========================================================
+                val isAttackingNow = enemy.currentAnim == EnemyAnimation.ATTACK || enemy.currentAnim == EnemyAnimation.SPECIAL_ATTACK
+
+                if (isAttackingNow) {
+                    val animConfig = enemy.enemyType.animations[enemy.currentAnim]
+                    val durationMillisFloat = if ((animConfig?.durationMillis ?: 0) > 0) animConfig!!.durationMillis.toFloat() else 400f
+
+                    // Считаем прошедшее время СТРОГО от момента старта замаха
+                    val elapsed = (gameTimeMillis - enemy.animationStartTime).coerceIn(0, durationMillisFloat.toLong()).toFloat()
+
+                    if (elapsed >= durationMillisFloat) {
+                        // Удар завершен! Только теперь возвращаем врага в IDLE и обнуляем импульс
+                        enemy.currentAnim = EnemyAnimation.IDLE
+                        enemy.animationStartTime = gameTimeMillis
+                        enemy.renderOffsetX = 0f
+                    } else {
+                        // Удар продолжается: плавно рассчитываем синусоиду выпада
+                        val progress = elapsed / durationMillisFloat
+                        val lungeFactor = kotlin.math.sin(progress * kotlin.math.PI).toFloat()
+                        val attackLungeDistance = 0.4f
+                        val direction = if (enemy.isLeft) -1f else 1f
+
+                        enemy.renderOffsetX = direction * attackLungeDistance * lungeFactor
+                    }
+
+                    // 🔥 КРИТИЧЕСКИЙ ВЫХОД: Пока враг в анимации удара, мы прерываем выполнение такта!
+                    // Никакое патрулирование или сближение ниже по коду не сможет сбросить таймер.
+                    return@forEach
+                }
+
+                // Во всех остальных состояниях (бег, патруль) выпада быть не должно
+                enemy.renderOffsetX = 0f
+
+                // 2. Сброс для ВСЕХ ОСТАЛЬНЫХ анимаций (WALK, HURT и т.д.), кроме атаки
                 val currentElapsed = gameTimeMillis - enemy.animationStartTime
                 if (!enemy.currentConfig.loop && currentElapsed >= enemy.currentConfig.durationMillis) {
                     enemy.currentAnim = EnemyAnimation.IDLE
@@ -177,42 +213,36 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                 // Расчеты дистанции и направления до игрока
                 val distanceToPlayer = kotlin.math.abs(activeHero.playerX - enemy.x)
                 val directionToPlayer = if (activeHero.playerX < enemy.x) -1 else 1
-
-                // 🔥 ВЫЧИСЛЯЕМ МАКСИМАЛЬНЫЙ РАДИУС АТАКИ ВРАГА
                 val maxEnemyAttackDistance = if (enemy.enemyType.isRangeAttack) 2 else 1
 
                 // ========================================================
-                // РЕЖИМ 1: АТАКА (Игрок находится в радиусе поражения оружия)
+                // РЕЖИМ 1: АТАКА
                 // ========================================================
                 if (distanceToPlayer <= maxEnemyAttackDistance) {
-                    enemy.isLeft = directionToPlayer < 0
+                    // Запускаем атаку ТОЛЬКО ОДИН РАЗ при входе в радиус
+                    if (enemy.currentAnim != EnemyAnimation.ATTACK && enemy.currentAnim != EnemyAnimation.SPECIAL_ATTACK) {
+                        enemy.isLeft = directionToPlayer < 0
 
-                    if (enemy.isBossSecondPhase && enemy.enemyType.animations.containsKey(
-                            EnemyAnimation.SPECIAL_ATTACK
-                        )
-                    ) {
-                        enemy.currentAnim = EnemyAnimation.SPECIAL_ATTACK
-                        soundPlayer.playSound(GameSound.ENEMY_SPECIAL_ATTACK, enemyType = enemy.enemyType)
-                    } else {
-                        enemy.currentAnim = EnemyAnimation.ATTACK
-                        soundPlayer.playSound(GameSound.ENEMY_ATTACK, enemyType = enemy.enemyType)
+                        if (enemy.isBossSecondPhase && enemy.enemyType.animations.containsKey(EnemyAnimation.SPECIAL_ATTACK)) {
+                            enemy.currentAnim = EnemyAnimation.SPECIAL_ATTACK
+                            soundPlayer.playSound(GameSound.ENEMY_SPECIAL_ATTACK, enemyType = enemy.enemyType)
+                        } else {
+                            enemy.currentAnim = EnemyAnimation.ATTACK
+                            soundPlayer.playSound(GameSound.ENEMY_ATTACK, enemyType = enemy.enemyType)
+                        }
+                        // Фиксируем время старта удара
+                        enemy.animationStartTime = gameTimeMillis
                     }
 
-                    enemy.animationStartTime = gameTimeMillis
-
-                    // Наносим урон герою, только если он твердо стоит на земле (не в прыжке)
+                    // Логика нанесения урона герою (оставляем без изменений)
                     if (activeHero.jumpOffsetY.value == 0f && !activeHero.isFalling) {
                         val damageToHero = if (enemy.isBossSecondPhase) 2 else 1
                         activeHero.health = (activeHero.health - damageToHero).coerceAtLeast(0)
 
-                        // 🔥 ИСПРАВЛЕНИЕ: Возвращаем правильный триггер командной смерти персонажа
                         if (activeHero.health <= 0) {
                             isLeftPressed = false
                             isRightPressed = false
                             activeHero.currentAnim = CharacterAnimation.IDLE
-
-                            // Вызываем функцию, которая переключит на следующего живого
-                            // или завершит игру через onGameOver(), если мертвы все три!
                             switchToNextAliveHero()
                         }
                     }

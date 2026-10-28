@@ -154,7 +154,8 @@ fun GameViewport(
         // ========================================================
         enemies.forEach { enemy ->
             if (enemy.health <= 0) return@forEach // Мертвых полностью скрываем
-
+            // Вставляем «пустую» операцию с gameTimeMillis, чтобы Compose читал её в цикле отрисовки каждого врага
+            val forceRecompose = gameTimeMillis
             val config = enemy.currentConfig
             val enemyAnims = textures.enemyBitmaps[enemy.enemyType] ?: return@forEach
             val currentBitmap = enemyAnims[enemy.currentAnim] ?: enemyAnims[EnemyAnimation.IDLE] ?: return@forEach
@@ -176,8 +177,25 @@ fun GameViewport(
             val dstSize = IntSize(TILE_DISPLAY_SIZE.toInt(), TILE_DISPLAY_SIZE.toInt())
 
             // Достаем плавную интерполированную координату врага
+            // Расчет позиции
             val animatedX = animatedEnemyPositions[enemy]?.value ?: (enemy.x * TILE_DISPLAY_SIZE)
-            val enemyDrawX = animatedX + finalCameraX
+
+            // 🔥 Рассчитываем импульс прямо в UI на основе «живого» gameTimeMillis
+            val lungePx = if (enemy.currentAnim == EnemyAnimation.ATTACK || enemy.currentAnim == EnemyAnimation.SPECIAL_ATTACK) {
+                val animConfig = enemy.enemyType.animations[enemy.currentAnim]
+                val duration = if ((animConfig?.durationMillis ?: 0) > 0) animConfig!!.durationMillis.toFloat() else 400f
+                val currentElapsed = (forceRecompose - enemy.animationStartTime).coerceIn(0, duration.toLong()).toFloat()
+                val progress = currentElapsed / duration
+                val lungeFactor = kotlin.math.sin(progress * kotlin.math.PI).toFloat()
+                val direction = if (enemy.isLeft) -1f else 1f
+
+                direction * 0.4f * lungeFactor * TILE_DISPLAY_SIZE
+            } else {
+                0f
+            }
+
+            // Добавляем lungePx к итоговой координате
+            val enemyDrawX = animatedX + finalCameraX + lungePx
             val enemyDrawY = groundY + enemy.jumpOffsetY
 
             // 1. Отрисовка спрайта врага
@@ -198,7 +216,9 @@ fun GameViewport(
             }
 
             // 2. Отрисовка текста (Название и Сердечко с цифрой жизней) над головой врага
-            val hudText = "${enemy.enemyType.displayName.uppercase()}  ❤️ ${enemy.health}"
+//            val hudText = "${enemy.enemyType.displayName.uppercase()}  ❤️ ${enemy.health}"
+            val roundedLunge = (kotlin.math.round(enemy.renderOffsetX * 100f) / 100f)
+            val hudText = "${enemy.enemyType.displayName.uppercase()}  ❤️ ${enemy.health} | L: $roundedLunge"
 
             val isBoss = enemy.enemyType.displayName.contains("Босс")
             val textStyle = TextStyle(

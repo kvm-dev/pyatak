@@ -12,6 +12,7 @@ class EnemyState(
     startY: Int = 0,
     val patrolRadius: Int = 2 // На сколько клеток влево-вправо враг может отходить
 ) {
+    var renderOffsetX by mutableStateOf(0f)
     var x by mutableStateOf(startX)
     var y by mutableStateOf(startY)
 
