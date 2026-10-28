@@ -53,6 +53,10 @@ kotlin {
                 api(libs.compose.ui)
                 api(libs.compose.components.resources)
                 api(libs.compose.uiToolingPreview)
+                //di
+                implementation(libs.koin.core)
+                implementation(libs.koin.compose)
+                implementation(libs.koin.compose.viewmodel)
                 //lottie
                 api(libs.compottie)
                 //ui - liquid glass
@@ -75,7 +79,10 @@ kotlin {
         }
 
         androidMain {
-            dependencies {}
+            dependencies {
+                //di
+                implementation(libs.koin.android)
+            }
         }
 
         getByName("androidDeviceTest") {

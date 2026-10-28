@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import ru.mykvm.ui.control.BottomGamePad
 import ru.mykvm.ui.control.TopHeroSelector
 import ru.mykvm.ui.enemy.EnemyState
@@ -45,14 +46,16 @@ import ru.mykvm.ui.levels.lostCity.TILE_DISPLAY_SIZE
 import ru.mykvm.ui.levels.lostCity.gameMap
 import ru.mykvm.ui.model.CharacterAnimation
 import ru.mykvm.ui.model.EnemyAnimation
+import ru.mykvm.ui.model.GameSound
 import ru.mykvm.ui.model.ResourceType
 import ru.mykvm.ui.model.TileType
+import ru.mykvm.ui.utils.SoundPlayer
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelComplete: (resources: Map<ResourceType, Int>, deadHeroes: List<HeroType>) -> Unit) {
     require(initialTeamClasses.size == 3) { "В команде должно быть ровно 3 персонажа!" }
-
+    val soundPlayer: SoundPlayer = koinInject()
     val coroutineScope = rememberCoroutineScope()
     val gatheredResources = remember { mutableStateMapOf<ResourceType, Int>() }
     val depletedTiles = remember { mutableStateOf(setOf<Pair<Int, Int>>()) }
@@ -67,7 +70,7 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
         listOf(
             EnemyState(EnemyType.PATROL, startX = 6),
             EnemyState(EnemyType.ROBOT, startX = 12),
-            EnemyState(EnemyType.BOSS_LORD_HREWNDEL, startX = 17)
+            EnemyState(EnemyType.BOSS_KNIGHT, startX = 17)
         )
     }
 
@@ -84,7 +87,7 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
     val textures = LevelTextures.rememberTextures(
         enemiesInLevel = listOf(
             EnemyType.PATROL,
-            EnemyType.ROBOT, EnemyType.BOSS_LORD_HREWNDEL
+            EnemyType.ROBOT, EnemyType.BOSS_KNIGHT
         )
     )
     val repeatableBrush = remember(textures.levelScene) {
@@ -189,8 +192,10 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                         )
                     ) {
                         enemy.currentAnim = EnemyAnimation.SPECIAL_ATTACK
+                        soundPlayer.playSound(GameSound.ENEMY_SPECIAL_ATTACK, enemyType = enemy.enemyType)
                     } else {
                         enemy.currentAnim = EnemyAnimation.ATTACK
+                        soundPlayer.playSound(GameSound.ENEMY_ATTACK, enemyType = enemy.enemyType)
                     }
 
                     enemy.animationStartTime = gameTimeMillis
@@ -242,6 +247,7 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                             // Все условия сошлись! Запускаем процесс прыжка
                             enemy.isLeft = jumpDirection < 0
                             enemy.currentAnim = EnemyAnimation.JUMP
+                            soundPlayer.playSound(GameSound.ENEMY_JUMP)
                             enemy.animationStartTime = gameTimeMillis
                             enemy.x = targetJumpX // GameViewport плавно покатит его по X за 300мс
 
@@ -613,6 +619,7 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                             activeHero.stamina -= 1
                             activeHero.currentAnim = CharacterAnimation.ATTACK
                             activeHero.animationStartTime = gameTimeMillis
+                            soundPlayer.playSound(GameSound.ATTACK, activeHero.heroType)
 
                             val attackDirection = if (activeHero.isLeft) -1 else 1
                             val maxAttackDistance = if (activeHero.heroType.isRangeAttack) 2 else 1
@@ -629,8 +636,8 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                                 if (isVulnerable) {
                                     val damage = 1
                                     val newHealth = hitEnemy.health - damage
-                                    val isFinalBoss =
-                                        hitEnemy.enemyType == EnemyType.BOSS_LORD_HREWNDEL
+                                    soundPlayer.playSound(GameSound.HIT)
+                                    val isFinalBoss = hitEnemy.enemyType == EnemyType.BOSS_LORD_HREWNDEL
 
                                     if (newHealth <= 0 && isFinalBoss && !hitEnemy.hasResurrected) {
                                         hitEnemy.health = hitEnemy.enemyType.maxHealth
@@ -639,10 +646,11 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                                         hitEnemy.currentAnim = EnemyAnimation.RESURRECT
                                         hitEnemy.animationStartTime = gameTimeMillis
 
-                                        val resurrectConfig =
-                                            hitEnemy.enemyType.animations[EnemyAnimation.RESURRECT]
-                                        val duration =
-                                            resurrectConfig?.durationMillis?.toLong() ?: 2000L
+                                        // 🔥 Передаем enemyType, чтобы проиграть уникальный звук возрождения босса
+                                        soundPlayer.playSound(GameSound.ENEMY_RESURRECT, enemyType = hitEnemy.enemyType)
+
+                                        val resurrectConfig = hitEnemy.enemyType.animations[EnemyAnimation.RESURRECT]
+                                        val duration = resurrectConfig?.durationMillis?.toLong() ?: 2000L
                                         hitEnemy.aiStunDurationMillis = duration
                                     } else {
                                         hitEnemy.health = newHealth.coerceAtLeast(0)
@@ -653,9 +661,13 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                                         }
                                     }
                                 } else {
+                                    // Игрок атаковал не тем персонажем -> Враг блокирует удар (Неуязвимость)
                                     hitEnemy.currentAnim = EnemyAnimation.SPECIAL
                                     hitEnemy.animationStartTime = gameTimeMillis
                                     hitEnemy.aiStunDurationMillis = 1500L
+
+                                    // 🔥 ВСТАВЛЯЕМ СЮДА: Звук ухода в блок/активации защиты для конкретного моба!
+                                    soundPlayer.playSound(GameSound.ENEMY_SPECIAL, enemyType = hitEnemy.enemyType)
                                 }
                             }
                         }
@@ -687,6 +699,7 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                                 activeHero.animationStartTime = gameTimeMillis
                                 activeHero.playerX = targetX
                                 activeHero.isMoving = true
+                                soundPlayer.playSound(GameSound.JUMP, activeHero.heroType)
 
                                 coroutineScope.launch {
                                     activeHero.jumpOffsetY.animateTo(
@@ -710,6 +723,7 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                             activeHero.stamina -= 1
                             activeHero.currentAnim = CharacterAnimation.EXTRACT
                             gatheredResources[targetRes] = (gatheredResources[targetRes] ?: 0) + 1
+                            soundPlayer.playSound(GameSound.EXTRACT, activeHero.heroType)
 
                             // 🔥 НОВОЕ: Истощаем жилу, добавляя её координаты в набор!
                             depletedTiles.value = depletedTiles.value + Pair(activeHero.playerX, activeHero.playerY)

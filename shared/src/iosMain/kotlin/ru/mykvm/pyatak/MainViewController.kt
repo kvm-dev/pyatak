@@ -6,6 +6,7 @@ import org.koin.core.context.startKoin
 import ru.mykvm.language.imp.di.languageModule
 import ru.mykvm.language.imp.di.languagePlatformModule
 import ru.mykvm.splash.imp.di.splashModule
+import ru.mykvm.ui.di.enginePlatformModule
 
 //fun MainViewController() = ComposeUIViewController { App() }
 
@@ -21,6 +22,7 @@ fun MainViewController() = ComposeUIViewController(
                 languagePlatformModule,
                 languageModule,
                 splashModule,
+                enginePlatformModule
 //                asModeModule,
             )
         }
