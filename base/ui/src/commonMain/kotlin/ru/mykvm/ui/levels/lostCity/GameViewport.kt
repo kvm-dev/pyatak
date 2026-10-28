@@ -216,9 +216,9 @@ fun GameViewport(
             }
 
             // 2. Отрисовка текста (Название и Сердечко с цифрой жизней) над головой врага
-//            val hudText = "${enemy.enemyType.displayName.uppercase()}  ❤️ ${enemy.health}"
-            val roundedLunge = (kotlin.math.round(enemy.renderOffsetX * 100f) / 100f)
-            val hudText = "${enemy.enemyType.displayName.uppercase()}  ❤️ ${enemy.health} | L: $roundedLunge"
+            val hudText = "${enemy.enemyType.displayName.uppercase()}  ❤️ ${enemy.health}"
+//            val roundedLunge = (kotlin.math.round(enemy.renderOffsetX * 100f) / 100f)
+//            val hudText = "${enemy.enemyType.displayName.uppercase()}  ❤️ ${enemy.health} | L: $roundedLunge"
 
             val isBoss = enemy.enemyType.displayName.contains("Босс")
             val textStyle = TextStyle(

@@ -69,8 +69,14 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
     val enemies = remember {
         listOf(
             EnemyState(EnemyType.PATROL, startX = 6),
-            EnemyState(EnemyType.ROBOT, startX = 12),
-            EnemyState(EnemyType.BOSS_KNIGHT, startX = 17)
+            EnemyState(EnemyType.PATROL, startX = 14),
+            EnemyState(EnemyType.STORMTROOPER, startX = 19),
+            EnemyState(EnemyType.STORMTROOPER, startX = 22),
+            EnemyState(EnemyType.STORMTROOPER, startX = 26),
+            EnemyState(EnemyType.BOSS_ROBOT, startX = 29),
+            EnemyState(EnemyType.PATROL, startX = 38),
+            EnemyState(EnemyType.STORMTROOPER, startX = 42),
+            EnemyState(EnemyType.BOSS_LORD_HREWNDEL, startX = 44)
         )
     }
 
@@ -86,8 +92,12 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
     // Текстуры
     val textures = LevelTextures.rememberTextures(
         enemiesInLevel = listOf(
+            EnemyType.PATROL, EnemyType.PATROL,
+            EnemyType.STORMTROOPER, EnemyType.STORMTROOPER, EnemyType.STORMTROOPER,
+            EnemyType.BOSS_ROBOT,
             EnemyType.PATROL,
-            EnemyType.ROBOT, EnemyType.BOSS_KNIGHT
+            EnemyType.STORMTROOPER,
+            EnemyType.BOSS_LORD_HREWNDEL
         )
     )
     val repeatableBrush = remember(textures.levelScene) {
@@ -761,6 +771,7 @@ fun TestMap(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelC
                             // ❌ ОТКАЗ
                             activeHero.animationStartTime = gameTimeMillis
                             activeHero.currentAnim = CharacterAnimation.REFUSE
+                            soundPlayer.playSound(GameSound.REFUSE, activeHero.heroType)
                         }
                     }
                 )
