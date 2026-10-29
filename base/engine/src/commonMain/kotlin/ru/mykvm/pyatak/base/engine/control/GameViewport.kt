@@ -25,10 +25,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.drawText
-import ru.mykvm.pyatak.base.engine.levels.lostCity.LevelTextures
-import ru.mykvm.pyatak.base.engine.levels.lostCity.MAP_COLUMNS
-import ru.mykvm.pyatak.base.engine.levels.lostCity.TILE_DISPLAY_SIZE
-import ru.mykvm.pyatak.base.engine.levels.lostCity.gameMap
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -43,6 +39,8 @@ fun GameViewport(
     gameTimeMillis: Long,
     textures: LevelTextures,
     repeatableBrush: Brush,
+    mapColumns: Int,
+    gameMap: List<List<TileType>>,
     modifier: Modifier = Modifier
 ) {
     // Текстовый измеритель для рисования имен и здоровья над головами врагов
@@ -69,7 +67,7 @@ fun GameViewport(
         // Считаем сдвиг камеры напрямую от cameraOffsetX
         val rawCameraOffsetX = screenCenterX - (cameraOffsetX + TILE_DISPLAY_SIZE / 2f)
 
-        val mapTotalWidth = MAP_COLUMNS * TILE_DISPLAY_SIZE
+        val mapTotalWidth = mapColumns * TILE_DISPLAY_SIZE
         val minCameraX = size.width - mapTotalWidth
 
         // Ограничение камеры у краев уровня
@@ -107,7 +105,7 @@ fun GameViewport(
         // 3. СЛОЙ 3: ИГРОВАЯ КАРТА (ДВУХСЛОЙНЫЙ ТАКТИЧЕСКИЙ РЕНДЕР)
         // ========================================================
         withTransform({ translate(left = finalCameraX, top = 0f) }) {
-            for (col in 0 until MAP_COLUMNS) {
+            for (col in 0 until mapColumns) {
                 // 🔥 ИСПРАВЛЕНИЕ: Берем конкретную плитку по строке Y и колонке X
                 val tile = gameMap.getOrNull(activeHero.playerY)?.getOrNull(col) ?: TileType.EMPTY
 

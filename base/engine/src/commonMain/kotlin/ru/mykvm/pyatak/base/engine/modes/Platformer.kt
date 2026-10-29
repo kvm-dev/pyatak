@@ -36,17 +36,15 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import ru.mykvm.pyatak.base.engine.control.BottomGamePad
 import ru.mykvm.pyatak.base.engine.control.TopHeroSelector
-import ru.mykvm.pyatak.base.engine.enemy.EnemyState
 import ru.mykvm.pyatak.base.engine.enemy.EnemyType
 import ru.mykvm.pyatak.base.engine.hero.HeroType
 import ru.mykvm.pyatak.base.engine.hero.HeroState
 import ru.mykvm.pyatak.base.engine.control.GameViewport
-import ru.mykvm.pyatak.base.engine.levels.lostCity.LevelTextures
-import ru.mykvm.pyatak.base.engine.levels.lostCity.MAP_COLUMNS
-import ru.mykvm.pyatak.base.engine.levels.lostCity.TILE_DISPLAY_SIZE
-import ru.mykvm.pyatak.base.engine.levels.lostCity.gameMap
+import ru.mykvm.pyatak.base.engine.control.LevelTextures
+import ru.mykvm.pyatak.base.engine.control.TILE_DISPLAY_SIZE
 import ru.mykvm.pyatak.base.engine.model.CharacterAnimation
 import ru.mykvm.pyatak.base.engine.model.EnemyAnimation
+import ru.mykvm.pyatak.base.engine.model.EnemyData
 import ru.mykvm.pyatak.base.engine.model.GameSound
 import ru.mykvm.pyatak.base.engine.model.ResourceType
 import ru.mykvm.pyatak.base.engine.model.TileType
@@ -54,10 +52,16 @@ import ru.mykvm.pyatak.base.engine.utils.SoundPlayer
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
-fun Platformer(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLevelComplete: (resources: Map<ResourceType, Int>, deadHeroes: List<HeroType>) -> Unit) {
+fun Platformer(initialTeamClasses: List<HeroType>,
+               onGameOver: () -> Unit,
+               onLevelComplete: (resources: Map<ResourceType, Int>,
+                                 deadHeroes: List<HeroType>) -> Unit,
+               gameMap: List<List<TileType>>,
+               enemyData: EnemyData) {
     require(initialTeamClasses.size == 3) { "В команде должно быть ровно 3 персонажа!" }
     val soundPlayer: SoundPlayer = koinInject()
     val coroutineScope = rememberCoroutineScope()
@@ -66,22 +70,12 @@ fun Platformer(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLev
     // 1. Инициализируем состояние всей тройки (спавним их, например, на соседних клетках: 1, 2, 3)
     val team = remember {
         initialTeamClasses.mapIndexed { index, heroClass ->
-            HeroState(heroType = heroClass, startX = index + 1)
+            HeroState(heroType = heroClass, startX = index + 1, health = heroClass.health, stamina = heroClass.stamina)
         }
     }
 
     val enemies = remember {
-        listOf(
-            EnemyState(EnemyType.PATROL, startX = 6),
-            EnemyState(EnemyType.PATROL, startX = 14),
-            EnemyState(EnemyType.STORMTROOPER, startX = 19),
-            EnemyState(EnemyType.STORMTROOPER, startX = 22),
-            EnemyState(EnemyType.STORMTROOPER, startX = 26),
-            EnemyState(EnemyType.BOSS_ROBOT, startX = 29),
-            EnemyState(EnemyType.PATROL, startX = 38),
-            EnemyState(EnemyType.STORMTROOPER, startX = 42),
-            EnemyState(EnemyType.BOSS_LORD_HREWNDEL, startX = 44)
-        )
+        enemyData.enemies
     }
 
     // 2. Индекс персонажа, которым мы управляем в данный момент
@@ -95,14 +89,7 @@ fun Platformer(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLev
 
     // Текстуры
     val textures = LevelTextures.rememberTextures(
-        enemiesInLevel = listOf(
-            EnemyType.PATROL, EnemyType.PATROL,
-            EnemyType.STORMTROOPER, EnemyType.STORMTROOPER, EnemyType.STORMTROOPER,
-            EnemyType.BOSS_ROBOT,
-            EnemyType.PATROL,
-            EnemyType.STORMTROOPER,
-            EnemyType.BOSS_LORD_HREWNDEL
-        )
+        enemyData.enemyTextures
     )
     val repeatableBrush = remember(textures.levelScene) {
         ShaderBrush(
@@ -133,7 +120,7 @@ fun Platformer(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLev
                 val isActuallyResting =
                     hero.jumpOffsetY.value == 0f && !hero.isFalling && !isLeftPressed && !isRightPressed
 
-                if (isActuallyResting && hero.stamina < 10) {
+                if (isActuallyResting && hero.stamina < (hero.maxStamina)) {
                     hero.stamina += 1
 
                     // Если стамина восстановилась хотя бы до 1, а персонаж завис в анимации WALK,
@@ -471,7 +458,7 @@ fun Platformer(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLev
             val newX = activeHero.playerX + dX
             activeHero.isLeft = dX < 0
 
-            if (newX in 0 until MAP_COLUMNS) {
+            if (newX in gameMap[0].indices) {
                 val targetTile = gameMap[activeHero.playerY][newX]
 
                 // 🔥 НОВАЯ ПРОВЕРКА: Ищем, стоит ли на целевой плитке newX живой враг
@@ -512,7 +499,7 @@ fun Platformer(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLev
 
             // Берем точную длительность проигранного спрайт-листа из конфигурации
             val duration = activeHero.currentConfig.durationMillis.toLong()
-            delay(duration)
+            delay(duration.milliseconds)
 
             // Мгновенно возвращаем персонажа в строй и сбрасываем таймер для плавной анимации покоя
             activeHero.currentAnim = CharacterAnimation.IDLE
@@ -554,7 +541,9 @@ fun Platformer(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLev
             gameTimeMillis = gameTimeMillis,
             textures = textures,
             repeatableBrush = repeatableBrush,
-            deletedTiles = depletedTiles.value, // 🔥 НОВЫЙ ПАРАМЕТР
+            deletedTiles = depletedTiles.value,
+            mapColumns = gameMap[0].size,
+            gameMap = gameMap,
             modifier = Modifier
                 .fillMaxWidth()
                 .height((TILE_DISPLAY_SIZE * 3.5f).dp)
@@ -601,7 +590,9 @@ fun Platformer(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLev
                 gameTimeMillis = gameTimeMillis,
                 textures = textures,
                 repeatableBrush = repeatableBrush,
-                deletedTiles = depletedTiles.value, // 🔥 ВОТ ЭТА СТРОКА ИСПРАВИТ ОШИБКУ КОМПИЛЯЦИИ
+                deletedTiles = depletedTiles.value,
+                mapColumns = gameMap[0].size,
+                gameMap = gameMap,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height((TILE_DISPLAY_SIZE * 3.5f).dp)
@@ -723,7 +714,7 @@ fun Platformer(initialTeamClasses: List<HeroType>, onGameOver: () -> Unit, onLev
                             val nextX = activeHero.playerX + (if (activeHero.isLeft) -1 else 1)
 
                             val isInsideMap =
-                                targetX in 0 until MAP_COLUMNS && nextX in 0 until MAP_COLUMNS
+                                targetX in gameMap[0].indices && nextX in gameMap[0].indices
                             val currentHeroTile = gameMap[activeHero.playerY][activeHero.playerX]
                             val isStandingOnSafeGround = currentHeroTile != TileType.EMPTY
 

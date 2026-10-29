@@ -6,8 +6,11 @@ import androidx.compose.ui.Modifier
 import org.koin.compose.viewmodel.koinViewModel
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
+import ru.mykvm.pyatak.base.engine.hero.HeroStats
 import ru.mykvm.splash.imp.presentation.viewmodel.SplashScreenViewModel
 import ru.mykvm.pyatak.base.engine.hero.HeroType
+import ru.mykvm.pyatak.base.engine.levels.lostCity.lostCityEnemies
+import ru.mykvm.pyatak.base.engine.levels.lostCity.lostCityLevel
 import ru.mykvm.pyatak.base.engine.modes.Platformer
 
 @Composable
@@ -28,11 +31,14 @@ fun SplashScreen(viewModel: SplashScreenViewModel = koinViewModel(), onNavigateT
         }
 
         SplashScreenViewState.Loading-> {
+            HeroStats.humanPlayerHealth = 8
             Platformer(
+                gameMap = lostCityLevel,
+                enemyData = lostCityEnemies,
                 initialTeamClasses = listOf(
-                    HeroType.BOY_LIGHTSABER,
+                    HeroType.HUNTSMAN,
                     HeroType.GIRL_BOW,
-                    HeroType.MECHANIC
+                    HeroType.BOY_SWORD
                 ),
                 onGameOver = {
                     // 💀 Сработает, если вся тройка погибла

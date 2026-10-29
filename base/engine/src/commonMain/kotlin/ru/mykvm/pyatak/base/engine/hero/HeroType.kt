@@ -66,12 +66,16 @@ enum class HeroType(
     val icon: DrawableResource, // Ваша иконка 64x64
     val animations: Map<CharacterAnimation, AnimationConfig>,
     val isRangeAttack: Boolean = false,
+    val health: Int = 5,
+    val stamina: Int = 8,
     val extractableResource: ResourceType?
 ) {
     HUNTSMAN(
         displayName = "Охотник",
         icon = Res.drawable.huntsmanAvatar, // Замените на ваши ресурсы иконок
         isRangeAttack = true,
+        health = HeroStats.huntsmanHealth,
+        stamina = HeroStats.huntsmanStamina,
         extractableResource = ResourceType.HUNTSMAN_RES,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.huntsmanIdle, 25, 5, 500, true),
@@ -105,6 +109,8 @@ enum class HeroType(
         isRangeAttack = true,
         extractableResource = ResourceType.HUMAN_RES,
         icon = Res.drawable.boyAvatar,
+        health = HeroStats.humanPlayerHealth,
+        stamina = HeroStats.humanPlayerStamina,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.boyIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(Res.drawable.boyWalk, 25, 5, 1000, true),
@@ -124,6 +130,8 @@ enum class HeroType(
         displayName = "Мальчик",
         icon = Res.drawable.boyAvatar,
         extractableResource = ResourceType.HUMAN_RES,
+        health = HeroStats.humanPlayerHealth,
+        stamina = HeroStats.humanPlayerStamina,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.boyIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(Res.drawable.boyWalk, 25, 5, 1000, true),
@@ -144,6 +152,8 @@ enum class HeroType(
         isRangeAttack = true,
         icon = Res.drawable.boyAvatar,
         extractableResource = ResourceType.HUMAN_RES,
+        health = HeroStats.humanPlayerHealth,
+        stamina = HeroStats.humanPlayerStamina,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.boyIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(Res.drawable.boyWalk, 25, 5, 1000, true),
@@ -163,6 +173,8 @@ enum class HeroType(
         displayName = "Мальчик",
         icon = Res.drawable.boyAvatar,
         extractableResource = ResourceType.HUMAN_RES,
+        health = HeroStats.humanPlayerHealth,
+        stamina = HeroStats.humanPlayerStamina,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.boyIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(Res.drawable.boyWalk, 25, 5, 1000, true),
@@ -183,6 +195,8 @@ enum class HeroType(
         isRangeAttack = true,
         icon = Res.drawable.girlAvatar,
         extractableResource = ResourceType.HUMAN_RES,
+        health = HeroStats.humanPlayerHealth,
+        stamina = HeroStats.humanPlayerStamina,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.girlIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(Res.drawable.girlWalk, 25, 5, 1000, true),
@@ -202,6 +216,8 @@ enum class HeroType(
         displayName = "Девочка",
         icon = Res.drawable.girlAvatar,
         extractableResource = ResourceType.HUMAN_RES,
+        health = HeroStats.humanPlayerHealth,
+        stamina = HeroStats.humanPlayerStamina,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.girlIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(Res.drawable.girlWalk, 25, 5, 1000, true),
@@ -222,6 +238,8 @@ enum class HeroType(
         isRangeAttack = true,
         icon = Res.drawable.girlAvatar,
         extractableResource = ResourceType.HUMAN_RES,
+        health = HeroStats.humanPlayerHealth,
+        stamina = HeroStats.humanPlayerStamina,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.girlIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(Res.drawable.girlWalk, 25, 5, 1000, true),
@@ -241,6 +259,8 @@ enum class HeroType(
         displayName = "Девочка",
         icon = Res.drawable.girlAvatar,
         extractableResource = ResourceType.HUMAN_RES,
+        health = HeroStats.humanPlayerHealth,
+        stamina = HeroStats.humanPlayerStamina,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.girlIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(Res.drawable.girlWalk, 25, 5, 1000, true),
@@ -260,6 +280,8 @@ enum class HeroType(
         displayName = "Доктор",
         icon = Res.drawable.doctorAvatar,
         extractableResource = ResourceType.DOCTOR_RES,
+        health = HeroStats.doctorHealth,
+        stamina = HeroStats.doctorStamina,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.doctorIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(Res.drawable.doctorWalk, 25, 5, 1000, true),
@@ -279,6 +301,8 @@ enum class HeroType(
         displayName = "Механик",
         icon = Res.drawable.mechanicAvatar,
         extractableResource = ResourceType.MECHANIC_RES,
+        health = HeroStats.mechanicHealth,
+        stamina = HeroStats.mechanicStamina,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.mechanicIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(
@@ -304,6 +328,8 @@ enum class HeroType(
         displayName = "Шахтер",
         icon = Res.drawable.minerAvatar,
         extractableResource = ResourceType.MINER_RES,
+        health = HeroStats.minerHealth,
+        stamina = HeroStats.minerStamina,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.minerIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(Res.drawable.minerWalk, 25, 5, 1000, true),
@@ -324,6 +350,8 @@ enum class HeroType(
         isRangeAttack = true,
         icon = Res.drawable.shamanAvatar,
         extractableResource = ResourceType.SHAMAN_RES,
+        health = HeroStats.shamanHealth,
+        stamina = HeroStats.shamanStamina,
         animations = mapOf(
             CharacterAnimation.IDLE to AnimationConfig(Res.drawable.shamanIdle, 25, 5, 500, true),
             CharacterAnimation.WALK to AnimationConfig(Res.drawable.shamanWalk, 25, 5, 1000, true),

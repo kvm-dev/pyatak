@@ -10,8 +10,8 @@ import ru.mykvm.pyatak.base.engine.model.CharacterAnimation
 class HeroState(
     val heroType: HeroType,
     startX: Int,
-    startHealth: Int = 5,
-    startStamina: Int = 10
+    health: Int = 5,
+    stamina: Int = 10
 ) {
     var playerX by mutableStateOf(startX)
     var playerY by mutableStateOf(0) // На случай, если в будущем будут разные этажи
@@ -22,8 +22,10 @@ class HeroState(
     var isMoving by mutableStateOf(false)
     var isFalling by mutableStateOf(false)
 
-    var health by mutableStateOf(startHealth)
-    var stamina by mutableStateOf(startStamina)
+    var health by mutableStateOf(health)
+    var stamina by mutableStateOf(stamina)
+
+    var maxStamina by mutableStateOf(stamina)
 
     val jumpOffsetY = Animatable(0f)
     var moveDuration by mutableStateOf(300)

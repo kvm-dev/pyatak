@@ -117,7 +117,7 @@ fun BottomGamePad(
 
             // 3. Выносливость персонажа
             Text(
-                text = "STM: ⚡ ${activeHero.stamina}/10",
+                text = "STM: ⚡ ${activeHero.stamina}/${activeHero.maxStamina}",
                 color = Color(0xFFFFD740),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
