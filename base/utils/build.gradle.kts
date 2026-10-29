@@ -9,7 +9,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.utils"
+        namespace = "ru.mykvm.pyatak.base.utils"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }

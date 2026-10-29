@@ -9,7 +9,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.viewmodel"
+        namespace = "ru.mykvm.pyatak.base.viewmodel"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }

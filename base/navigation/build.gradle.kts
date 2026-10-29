@@ -9,7 +9,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.navigation"
+        namespace = "ru.mykvm.pyatak.base.navigation"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }
@@ -47,7 +47,7 @@ kotlin {
                 implementation(libs.androidx.lifecycle.viewmodelCompose)
                 implementation(libs.androidx.lifecycle.runtimeCompose)
                 //ui
-                api(projects.base.ui)
+                api(projects.base.engine)
                 implementation(libs.compose.runtime)
                 implementation(libs.compose.uiToolingPreview)
                 //navigastion

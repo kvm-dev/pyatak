@@ -6,7 +6,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.storage"
+        namespace = "ru.mykvm.pyatak.base.storage"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }

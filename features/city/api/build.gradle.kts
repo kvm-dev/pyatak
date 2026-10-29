@@ -6,7 +6,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.city.api"
+        namespace = "ru.mykvm.pyatak.features.city.api"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }

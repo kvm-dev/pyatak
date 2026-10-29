@@ -33,7 +33,7 @@ dependencyResolutionManagement {
 
 include(":androidApp")
 include(":shared")
-include(":base:ui")
+include(":base:engine")
 include(":base:navigation")
 include(":base:network")
 include(":base:notifications")

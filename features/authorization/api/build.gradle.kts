@@ -6,7 +6,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.authorization.api"
+        namespace = "ru.mykvm.pyatak.features.authorization.api"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }

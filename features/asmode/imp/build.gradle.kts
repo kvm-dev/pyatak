@@ -6,7 +6,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.asmode.imp"
+        namespace = "ru.mykvm.pyatak.features.asmode.imp"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }

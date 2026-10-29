@@ -6,7 +6,7 @@ import ru.mykvm.language.api.domain.usecase.GetCurrentLanguageUseCase
 import ru.mykvm.language.api.model.CurrentLanguageDomain
 import ru.mykvm.language.imp.data.LanguageRepository
 import ru.mykvm.language.imp.mapper.Mapper
-import ru.mykvm.utils.model.ResultState
+import ru.mykvm.pyatak.base.utils.model.ResultState
 
 class GetCurrentLanguageUseCaseImp(private val repository: LanguageRepository):
     GetCurrentLanguageUseCase {

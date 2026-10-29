@@ -7,8 +7,8 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
 import ru.mykvm.splash.imp.presentation.viewmodel.SplashScreenViewModel
-import ru.mykvm.ui.hero.HeroType
-import ru.mykvm.ui.levels.TestMap
+import ru.mykvm.pyatak.base.engine.hero.HeroType
+import ru.mykvm.pyatak.base.engine.modes.Platformer
 
 @Composable
 fun SplashScreen(viewModel: SplashScreenViewModel = koinViewModel(), onNavigateToHome: () -> Unit, onNavigationAuthorization: () -> Unit, modifier: Modifier) {
@@ -28,7 +28,7 @@ fun SplashScreen(viewModel: SplashScreenViewModel = koinViewModel(), onNavigateT
         }
 
         SplashScreenViewState.Loading-> {
-            TestMap(
+            Platformer(
                 initialTeamClasses = listOf(
                     HeroType.BOY_LIGHTSABER,
                     HeroType.GIRL_BOW,

@@ -6,7 +6,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.network"
+        namespace = "ru.mykvm.pyatak.base.network"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }

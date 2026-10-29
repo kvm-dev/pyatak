@@ -6,7 +6,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.city.imp"
+        namespace = "ru.mykvm.pyatak.features.city.imp"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }

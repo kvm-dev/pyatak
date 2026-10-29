@@ -6,7 +6,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.space.imp"
+        namespace = "ru.mykvm.pyatak.features.space.imp"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }

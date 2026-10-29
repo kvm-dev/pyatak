@@ -8,7 +8,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.splash.imp"
+        namespace = "ru.mykvm.pyatak.features.splash.imp"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }
@@ -50,7 +50,7 @@ kotlin {
                 //viewmodel
                 api(projects.base.viewmodel)
                 //ui
-                implementation(projects.base.ui)
+                implementation(projects.base.engine)
                 //base libs
                 implementation(libs.kotlin.stdlib)
                 //encrypted storage

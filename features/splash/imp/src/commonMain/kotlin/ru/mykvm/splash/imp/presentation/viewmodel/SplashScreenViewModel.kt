@@ -1,14 +1,10 @@
 package ru.mykvm.splash.imp.presentation.viewmodel
 
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.zip
-import ru.mykvm.language.api.model.CurrentLanguageDomain
 import ru.mykvm.splash.imp.domain.interactor.SplashScreenInteractor
 import ru.mykvm.splash.imp.presentation.ui.SplashScreenIntents
 import ru.mykvm.splash.imp.presentation.ui.SplashScreenSideEffects
 import ru.mykvm.splash.imp.presentation.ui.SplashScreenViewState
-import ru.mykvm.viewmodel.BaseViewModel
+import ru.mykvm.pyatak.base.viewmodel.BaseViewModel
 
 class SplashScreenViewModel(private val interactor: SplashScreenInteractor) : BaseViewModel<SplashScreenViewState, SplashScreenSideEffects>(
     SplashScreenViewState.Idle

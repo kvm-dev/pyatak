@@ -6,7 +6,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.notifications"
+        namespace = "ru.mykvm.pyatak.base.notifications"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }

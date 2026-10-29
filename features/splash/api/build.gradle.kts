@@ -6,7 +6,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "ru.mykvm.splash.api"
+        namespace = "ru.mykvm.pyatak.features.splash.api"
         compileSdk {
             version = release(libs.versions.android.compileSdk.get().toInt())
         }

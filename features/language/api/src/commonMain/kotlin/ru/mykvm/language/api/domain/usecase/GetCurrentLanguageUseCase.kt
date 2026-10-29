@@ -2,7 +2,7 @@ package ru.mykvm.language.api.domain.usecase
 
 import kotlinx.coroutines.flow.StateFlow
 import ru.mykvm.language.api.model.CurrentLanguageDomain
-import ru.mykvm.utils.model.ResultState
+import ru.mykvm.pyatak.base.utils.model.ResultState
 
 interface GetCurrentLanguageUseCase {
 

@@ -71,7 +71,7 @@ kotlin {
 //            implementation(projects.features.networkconnection.imp)
             implementation(projects.features.language.imp)
             //ui
-            implementation(projects.base.ui)
+            implementation(projects.base.engine)
             //di
             implementation(libs.koin.core)
             implementation(libs.koin.compose)

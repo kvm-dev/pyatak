@@ -16,7 +16,7 @@ dependencies {
     implementation(libs.compose.uiToolingPreview)
     //base
     implementation(projects.base.utils)
-    implementation(projects.base.ui)
+    implementation(projects.base.engine)
     //features
     implementation(projects.features.language.imp)
     implementation(projects.features.splash.imp)
